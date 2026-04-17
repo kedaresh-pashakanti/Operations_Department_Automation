@@ -701,7 +701,7 @@ def run_streamlit_app():
     st.title("HDFC ESCROW Automation")
 
     input_uploads = st.file_uploader(
-        "Upload Input Excel Files",
+        "Upload Statement Excel Files",
         type=["xlsx", "xlsm", "xls", "csv"],
         accept_multiple_files=True,
     )
