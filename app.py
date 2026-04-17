@@ -1,13 +1,10 @@
-
 import os
 import sys
 import io
-import re
 import zipfile
 import tempfile
 import importlib.util
 from datetime import date
-from contextlib import contextmanager
 
 import pandas as pd
 import streamlit as st
@@ -157,7 +154,7 @@ def page_statement_processor():
     st.caption("Process raw files and append them into a target workbook.")
 
     if app_mod is None:
-        st.error("app.py not found in the same folder as this launcher.")
+        st.error("1.py not found in the same folder as this launcher.")
         return
 
     raw_files = st.file_uploader(
@@ -190,7 +187,6 @@ def page_statement_processor():
             st.error("Please upload the target Excel file.")
             return
 
-        temp_paths = []
         try:
             processed_parts = []
             with st.spinner("Processing raw file(s)..."):
@@ -234,7 +230,7 @@ def page_hdfc_escrow():
     st.caption("Upload input file + template file. Optional HDFC UPI refund file can also be uploaded.")
 
     if hdfc_mod is None:
-        st.error("final.py not found in the same folder as this launcher.")
+        st.error("final2.py not found in the same folder as this launcher.")
         return
 
     input_upload = st.file_uploader(
@@ -323,7 +319,6 @@ def page_sp_cross_check():
     )
 
     if mid_mapping_upload is not None:
-        temp_mid = None
         try:
             temp_mid = _temp_save_uploaded(mid_mapping_upload)
             if hasattr(cross_mod, "MID_MAPPING_FILE_PATH"):
@@ -380,7 +375,6 @@ def page_sp_cross_check():
                 except Exception as e:
                     st.warning(f"Could not build download workbook(s): {e}")
 
-                # MID mapping compare if master file is available
                 if hasattr(cross_mod, "build_mid_mapping_comparison"):
                     try:
                         comparison_df, filtered_mid_df, mid_error = cross_mod.build_mid_mapping_comparison(
@@ -411,24 +405,25 @@ def page_sp_cross_check():
 
 
 # =============================================================================
-# Main navigation
+# Main single-page interface
 # =============================================================================
 st.set_page_config(page_title="Ops Automation", layout="wide")
 st.title("Ops Automation")
-st.caption("Choose the system from the navigation bar on the left.")
+st.caption("Select the workflow and use only that section on this single page.")
 
-page = st.sidebar.radio(
-    "Navigation",
+mode = st.selectbox(
+    "Choose your work",
     [
         "Statement Processor",
         "HDFC ESCROW MID MAPPING",
         "SP Cross Check",
     ],
+    key="main_mode",
 )
 
-if page == "Statement Processor":
+if mode == "Statement Processor":
     page_statement_processor()
-elif page == "HDFC ESCROW MID MAPPING":
+elif mode == "HDFC ESCROW MID MAPPING":
     page_hdfc_escrow()
 else:
     page_sp_cross_check()
