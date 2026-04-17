@@ -413,7 +413,7 @@ def page_sp_cross_check():
 # =============================================================================
 # Main navigation
 # =============================================================================
-st.set_page_config(page_title="3-in-1 Operations Launcher", layout="wide")
+st.set_page_config(page_title="Ops Automation", layout="wide")
 st.title("3-in-1 Operations Launcher")
 st.caption("Choose the system from the navigation bar on the left.")
 
