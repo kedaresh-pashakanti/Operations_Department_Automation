@@ -705,7 +705,7 @@ def run_streamlit_app():
         type=["xlsx", "xlsm", "xls", "csv"],
         accept_multiple_files=True,
     )
-    template_upload = st.file_uploader("Upload Template Excel File", type=["xlsx", "xlsm"])
+    template_upload = st.file_uploader("Upload Raw Excel File", type=["xlsx", "xlsm"])
     refund_uploads = st.file_uploader(
         "Upload HDFC UPI Refund Files",
         type=["xlsx", "xlsm", "xls", "csv"],
@@ -716,7 +716,7 @@ def run_streamlit_app():
         st.success(f"{len(input_uploads)} input file(s) uploaded successfully")
 
     if template_upload is not None:
-        st.success("Template file uploaded successfully")
+        st.success("Raw file uploaded successfully")
 
     if refund_uploads:
         st.info(f"{len(refund_uploads)} HDFC UPI refund file(s) uploaded successfully")
