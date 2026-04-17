@@ -414,7 +414,7 @@ def page_sp_cross_check():
 # Main navigation
 # =============================================================================
 st.set_page_config(page_title="Ops Automation", layout="wide")
-st.title("3-in-1 Operations Launcher")
+st.title("Ops Automation")
 st.caption("Choose the system from the navigation bar on the left.")
 
 page = st.sidebar.radio(
