@@ -1612,7 +1612,7 @@ def build_sql_style_report(excel_data, selected_mpr_date):
     # 15-1PayecmsHDFC
     df = excel_data.get("1PayecmsHDFC")
     if isinstance(df, pd.DataFrame) and not df.empty:
-        txn = _match_col(df, "Reference_No", "Reference No")
+        txn = _match_col(df, "Client_code", "Client code")
         amt = _match_col(df, "Amount")
         if txn and amt:
             dfx = _date_filter_df(df, selected_mpr_date)
