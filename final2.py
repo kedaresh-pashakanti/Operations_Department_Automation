@@ -84,6 +84,9 @@ EXTRA_SP_MID_RULES = [
     ("70036473", "M000125"),
     ("70036474", "M000123"),
     ("70036475", "M000124"),
+    ("76027802", "M00015"),
+    ("70044094", "M00006173"),
+    ("70039039", "M00005451")
 ]
 
 
@@ -145,14 +148,36 @@ def resolve_refund_sp_from_rrn(reference_no, refund_rrn_map):
     3) mapping that External TID against EXTRA_SP_MID_RULES
     """
     rrn = safe_str(reference_no).strip()
+    
+    try:
+        rrn = str(int(float(rrn)))
+        
+    except:
+        pass
+            
+        
     if not rrn or not refund_rrn_map:
         return None
 
+        # 🔥 STEP 2: try direct match 
     external_tid = refund_rrn_map.get(rrn)
+    
+    # 🔥 STEP 3: fallback (handle mismatch cases)
+
+    
     if not external_tid:
-        return None
+        for key in refund_rrn_map:
+            if rrn in key or key in rrn:
+                external_tid = refund_rrn_map[key]
+                break
+            
+            if not external_tid:
+                return None
+
 
     external_tid_norm = normalize_text(external_tid)
+    
+    # 🔥 STEP 4: mapping
 
     for needle, sp_mid in EXTRA_SP_MID_RULES:
         if needle in external_tid_norm:
