@@ -114,10 +114,6 @@ cross_mod = _load_module_from_path("crosscheck_system", CROSSCHECK_FILE)
 # Shared UI helpers
 # =============================================================================
 def _temp_save_uploaded(uploaded_file):
-    """
-    Save a Streamlit uploaded file to a temporary path.
-    Returns the temp file path.
-    """
     suffix = os.path.splitext(uploaded_file.name)[1] or ".tmp"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     try:
@@ -150,83 +146,120 @@ def _download_excel_bytes(file_name, bytes_data):
 # Page 1 — Statement Processor
 # =============================================================================
 def page_statement_processor():
-    st.header("1) Statement Processor")
-    st.caption("Process raw files and append them into a target workbook.")
+    st.title("📄 Statement Processor")
+    st.caption("Step 1: Process raw files → Step 2: Append into target Excel file")
 
     if app_mod is None:
         st.error("1.py not found in the same folder as this launcher.")
         return
 
+    if "processed_df" not in st.session_state:
+        st.session_state.processed_df = None
+
+    st.subheader("Step 1 — Process raw files")
+
     raw_files = st.file_uploader(
         "Upload raw statement file(s)",
         type=["csv", "xlsx", "xlsm"],
         accept_multiple_files=True,
+        help="Upload one or more raw files. The app will detect the real header row automatically.",
         key="raw_files",
     )
+
+    process_clicked = st.button("Process Raw Files")
+
+    if process_clicked:
+        if not raw_files:
+            st.error("Please upload at least one raw file first.")
+        else:
+            processed_parts = []
+            file_errors = []
+
+            with st.spinner("Processing raw file(s)..."):
+                for file in raw_files:
+                    try:
+                        raw_df = app_mod.read_raw_statement(file)
+                        std_df = app_mod.standardize_statement_df(raw_df)
+                        processed_parts.append(std_df)
+                    except Exception as e:
+                        file_errors.append(f"{file.name}: {e}")
+
+            if file_errors:
+                for msg in file_errors:
+                    st.error(msg)
+
+            if processed_parts:
+                combined_df = pd.concat(processed_parts, ignore_index=True)
+                st.session_state.processed_df = combined_df
+
+                st.success(f"Processed successfully. Total rows: {len(combined_df)}")
+                st.dataframe(combined_df)
+
+                preview_buf = io.BytesIO()
+                with pd.ExcelWriter(preview_buf, engine="openpyxl") as writer:
+                    combined_df.to_excel(writer, index=False, sheet_name="Processed_Data")
+                preview_buf.seek(0)
+
+                st.download_button(
+                    "Download Processed Data",
+                    data=preview_buf.getvalue(),
+                    file_name="processed_statement.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+
+    st.markdown("---")
+    st.subheader("Step 2 — Append processed data into target Excel file")
 
     target_file = st.file_uploader(
         "Upload target Excel file",
         type=["xlsx", "xlsm"],
         key="target_file",
+        help="This is the file where processed data will be appended.",
     )
 
     sheet_name = None
     if target_file is not None:
         try:
-            target_bytes = target_file.getvalue()
-            wb = app_mod.load_workbook(io.BytesIO(target_bytes))
-            sheet_name = st.selectbox("Select target sheet", wb.sheetnames, index=0)
+            sheet_names = app_mod.get_sheet_names_from_xlsx(target_file)
+            sheet_name = st.selectbox("Select target sheet", sheet_names, index=0)
         except Exception as e:
             st.error(f"Unable to read workbook sheets: {e}")
 
-    if st.button("Process Statement", key="process_statement"):
-        if not raw_files:
-            st.error("Please upload at least one raw file.")
-            return
-        if target_file is None:
+    append_clicked = st.button("Append and Create Download")
+
+    if append_clicked:
+        if st.session_state.processed_df is None:
+            st.error("First process the raw file(s) in Step 1.")
+        elif target_file is None:
             st.error("Please upload the target Excel file.")
-            return
+        else:
+            try:
+                with st.spinner("Appending data to target workbook..."):
+                    target_bytes = target_file.getvalue()
+                    updated_bytes = app_mod.append_to_workbook(
+                        target_bytes=target_bytes,
+                        append_df=st.session_state.processed_df,
+                        sheet_name=sheet_name,
+                    )
 
-        try:
-            processed_parts = []
-            with st.spinner("Processing raw file(s)..."):
-                for file in raw_files:
-                    df = app_mod.read_raw_statement(file)
-                    std_df = app_mod.standardize_statement_df(df)
-                    processed_parts.append(std_df)
+                st.success("Data appended successfully.")
 
-            combined_df = pd.concat(processed_parts, ignore_index=True) if processed_parts else pd.DataFrame()
-
-            if combined_df.empty:
-                st.warning("No rows found after processing raw files.")
-                return
-
-            st.success(f"Processed successfully. Total rows: {len(combined_df)}")
-            st.dataframe(combined_df)
-
-            preview_buf = io.BytesIO()
-            with pd.ExcelWriter(preview_buf, engine="openpyxl") as writer:
-                combined_df.to_excel(writer, index=False, sheet_name="Processed_Data")
-            preview_buf.seek(0)
-            _download_excel_bytes("processed_statement.xlsx", preview_buf.getvalue())
-
-            target_bytes = target_file.getvalue()
-            updated_bytes = app_mod.append_to_workbook(
-                target_bytes=target_bytes,
-                append_df=combined_df,
-                sheet_name=sheet_name,
-            )
-            _download_excel_bytes(f"updated_{target_file.name}", updated_bytes)
-
-        except Exception as e:
-            st.error(f"Processing failed: {e}")
+                output_name = f"updated_{target_file.name}"
+                st.download_button(
+                    "Download Updated Excel File",
+                    data=updated_bytes,
+                    file_name=output_name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            except Exception as e:
+                st.error(f"Failed to append data: {e}")
 
 
 # =============================================================================
 # Page 2 — HDFC ESCROW MID MAPPING
 # =============================================================================
 def page_hdfc_escrow():
-    st.header("2) HDFC ESCROW MID MAPPING")
+    st.title("HDFC ESCROW MID MAPPING")
     st.caption("Upload input file + template file. Optional HDFC UPI refund file can also be uploaded.")
 
     if hdfc_mod is None:
@@ -302,8 +335,8 @@ def page_hdfc_escrow():
 # Page 3 — SP Cross Check
 # =============================================================================
 def page_sp_cross_check():
-    st.header("3) SP Cross Check")
-    st.caption("Upload a ZIP file, select MPR date, and compare the vendor totals.")
+    st.title("SP Cross Check")
+    st.markdown("Upload ZIP → Select MPR Date → Process → Summary → Download")
 
     if cross_mod is None:
         st.error("test_hdfc_upi_fixed.py not found in the same folder as this launcher.")
@@ -311,21 +344,7 @@ def page_sp_cross_check():
 
     zip_file = st.file_uploader("Upload ZIP file", type=["zip"], key="zip_file")
     mpr_date = st.date_input("Select MPR Date", value=date.today(), key="mpr_date")
-
-    mid_mapping_upload = st.file_uploader(
-        "Optional: Upload MID Mapping Excel file",
-        type=["xlsx", "xlsm"],
-        key="mid_mapping_upload",
-    )
-
-    if mid_mapping_upload is not None:
-        try:
-            temp_mid = _temp_save_uploaded(mid_mapping_upload)
-            if hasattr(cross_mod, "MID_MAPPING_FILE_PATH"):
-                cross_mod.MID_MAPPING_FILE_PATH = temp_mid
-            st.info("MID mapping file loaded for this session.")
-        except Exception as e:
-            st.warning(f"Unable to set MID mapping file: {e}")
+    MPR_DATE = mpr_date.strftime("%Y-%m-%d")
 
     if zip_file is not None and st.button("Process ZIP", key="process_zip"):
         try:
@@ -374,30 +393,6 @@ def page_sp_cross_check():
                     )
                 except Exception as e:
                     st.warning(f"Could not build download workbook(s): {e}")
-
-                if hasattr(cross_mod, "build_mid_mapping_comparison"):
-                    try:
-                        comparison_df, filtered_mid_df, mid_error = cross_mod.build_mid_mapping_comparison(
-                            summary_df, mpr_date
-                        )
-                        st.subheader("MID Mapping Compare")
-                        if mid_error:
-                            st.warning(mid_error)
-                        else:
-                            st.dataframe(comparison_df)
-
-                            if hasattr(cross_mod, "build_mid_mapping_workbook_bytes"):
-                                mid_xlsx = cross_mod.build_mid_mapping_workbook_bytes(
-                                    comparison_df, filtered_mid_df
-                                )
-                                st.download_button(
-                                    label="Download MID Mapping Compare Excel",
-                                    data=mid_xlsx,
-                                    file_name=f"MID_Mapping_Compare_{mpr_date.strftime('%d %b %Y')}.xlsx",
-                                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                )
-                    except Exception as e:
-                        st.warning(f"MID mapping comparison failed: {e}")
             else:
                 st.warning("No vendor totals were produced from the ZIP file.")
         except Exception as e:
@@ -405,25 +400,24 @@ def page_sp_cross_check():
 
 
 # =============================================================================
-# Main single-page interface
+# Main navigation
 # =============================================================================
 st.set_page_config(page_title="Ops Automation", layout="wide")
 st.title("Ops Automation")
-st.caption("Select the workflow and use only that section on this single page.")
+st.caption("Choose the system from the navigation bar on the left.")
 
-mode = st.selectbox(
-    "Choose your work",
+page = st.sidebar.radio(
+    "Navigation",
     [
         "Statement Processor",
         "HDFC ESCROW MID MAPPING",
         "SP Cross Check",
     ],
-    key="main_mode",
 )
 
-if mode == "Statement Processor":
+if page == "Statement Processor":
     page_statement_processor()
-elif mode == "HDFC ESCROW MID MAPPING":
+elif page == "HDFC ESCROW MID MAPPING":
     page_hdfc_escrow()
 else:
     page_sp_cross_check()
