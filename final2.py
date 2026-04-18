@@ -531,20 +531,33 @@ def apply_tag_logic(df, refund_rrn_map=None):
         tag = None
         sp = None
 
+         #1st ye run hoga 
         if row_tag_allowed(flag, "MPR"):
             tag, sp = get_mpr_credit_from_sp(description)
             if tag is None:
                 tag, sp = get_fd_mapping(description)
 
+
+        #2nd ye run hoga 
         if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
             tag, sp = get_chargeback(description)
-
-        if tag is None and row_tag_allowed(flag, "PAYOUT"):
-            tag, sp = get_payout(description)
-
+ 
+    
+        #3rd ye run hoga 
         if tag is None and row_tag_allowed(flag, "MDR"):
             tag, sp = get_mdr(description)
 
+        #4th ye run hoga 
+        if tag is None and row_tag_allowed(flag, "PAYOUT"):
+            tag, sp = get_payout(description)
+
+
+
+        # if tag is None and row_tag_allowed(flag, "MDR"):
+        #     tag, sp = get_mdr(description)
+
+
+        #end mai ye run hoga
         if tag is None and row_tag_allowed(flag, "REFUND"):
             tag, sp = get_refund(description, current_tag="")
 
