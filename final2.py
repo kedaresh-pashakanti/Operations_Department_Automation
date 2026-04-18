@@ -505,8 +505,33 @@ def copy_raw_data_to_target(ws, df):
 
     for row_idx, (_, record) in enumerate(df.iterrows(), start=2):
         for col_idx in range(RAW_COL_COUNT):
+            col_name = src_cols[col_idx]
             value = record[src_cols[col_idx]] if col_idx < len(src_cols) else None
-            ws.cell(row=row_idx, column=col_idx + 1, value=value)
+            #ye old vale logic ke hisab se tha sirf 1 line 
+            #ws.cell(row=row_idx, column=col_idx + 1, value=value)
+            cell = ws.cell(row=row_idx, column=col_idx + 1)
+            col_name_norm = normalize_text(col_name)
+            
+            
+            
+
+
+         
+            
+            # 🔥 FIX: handle Amount / Transaction Amount with precision
+            if "AMOUNT" in col_name_norm:
+                try:
+                    cell.value = Decimal(str(value))
+                    #cell.value = float(Decimal(str(value)))
+                except:
+                    cell.value = value
+                cell.number_format = '#,##0.00'
+            else:
+                cell.value = value
+            
+            
+
+
 
 
 def apply_tag_logic(df, refund_rrn_map=None):
