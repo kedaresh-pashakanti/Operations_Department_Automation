@@ -516,18 +516,41 @@ def copy_raw_data_to_target(ws, df):
             
 
 
+
+
+
          
             
             # 🔥 FIX: handle Amount / Transaction Amount with precision
+            # if "AMOUNT" in col_name_norm:
+            #     try:
+            #         cell.value = Decimal(str(value))
+            #         #cell.value = float(Decimal(str(value)))
+            #     except:
+            #         cell.value = value
+            #     cell.number_format = '#,##0.00'
+            # else:
+            #     cell.value = value
             if "AMOUNT" in col_name_norm:
                 try:
-                    cell.value = Decimal(str(value))
-                    #cell.value = float(Decimal(str(value)))
+                    val = Decimal(str(value))
+                    
+                    cell.value = float(val)
+                    cell.number_format = '0.00'
+                    cell._style = None   # 🔥 reset template formatting
                 except:
-                    cell.value = value
-                cell.number_format = '#,##0.00'
+                        cell.value = value
+                        cell.number_format = '0.00'
             else:
-                cell.value = value
+                            cell.value = value
+
+            
+
+
+
+
+
+
             
             
 
