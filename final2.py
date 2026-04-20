@@ -534,15 +534,35 @@ def copy_raw_data_to_target(ws, df):
             if "AMOUNT" in col_name_norm:
                 try:
                     val = Decimal(str(value))
-                    
                     cell.value = float(val)
-                    cell.number_format = '0.00'
-                    cell._style = None   # 🔥 reset template formatting
+                    cell.number_format = 'General'   # 🔥 force no formatting
+                    cell._style = None              # 🔥 reset template style
+                        
                 except:
-                        cell.value = value
-                        cell.number_format = '0.00'
+                    cell.value = value
+                    cell.number_format = 'General'
             else:
-                            cell.value = value
+                cell.value = value
+                        
+                        
+                
+                
+                
+                
+            
+            # if "AMOUNT" in col_name_norm:
+            #     try:
+            #         val = Decimal(str(value))
+                    
+            #         cell.value = float(val)
+            #         cell.number_format = '0.00'
+            #         cell._style = None   # 🔥 reset template formatting
+            #     except:
+            #             cell.value = value
+            #             cell.number_format = '0.00'
+            # else:
+            #                 cell.value = value
+                            
 
             
 
