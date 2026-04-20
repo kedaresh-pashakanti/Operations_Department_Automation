@@ -1,5 +1,6 @@
 import re
 from io import BytesIO, StringIO
+from decimal import Decimal
 
 import pandas as pd
 import streamlit as st
@@ -241,14 +242,29 @@ def append_to_workbook(target_bytes, append_df, sheet_name=None):
         ws.append(TARGET_COLUMNS)
         last_row = 1
 
-    # Append new rows
+    # Append new rows with precision handling
     for row in append_df[TARGET_COLUMNS].itertuples(index=False, name=None):
-        ws.append(list(row))
+        next_row = ws.max_row + 1
 
-    # Force Reference No column to remain text
-    ref_col_idx = TARGET_COLUMNS.index("Reference No") + 1
-    for r in range(last_row + 1, ws.max_row + 1):
-        ws.cell(r, ref_col_idx).number_format = "@"
+        for col_idx, value in enumerate(row, start=1):
+            cell = ws.cell(row=next_row, column=col_idx)
+            col_name = TARGET_COLUMNS[col_idx - 1]
+            col_name_norm = normalize_col_name(col_name)
+
+            # 🔥 FIX: handle Amount / Transaction Amount with precision
+            if "AMOUNT" in col_name_norm:
+                try:
+                    cell.value = Decimal(str(value))
+                    # cell.value = float(Decimal(str(value)))
+                except:
+                    cell.value = value
+                cell.number_format = '#,##0.00'
+            else:
+                cell.value = value
+
+            # Force Reference No column to remain text
+            if col_name == "Reference No":
+                cell.number_format = "@"
 
     output = BytesIO()
     wb.save(output)
