@@ -164,9 +164,9 @@ def build_arn_merchant_refund_sp_map(refund_df):
 
     for col in refund_df.columns:
         col_key = normalize_column_key(col)
-        if col_key == "ARNNO":
+        if "ARN" in col_key:
             arn_col = col
-        elif col_key == "MERCHANTID":
+        elif "MERCHANT" in col_key:
             merchant_col = col
 
     if not arn_col or not merchant_col:
@@ -222,6 +222,11 @@ def resolve_special_refund_sp_from_reference(reference_no, special_refund_sp_map
     Resolve SP Identifier/MID using the uploaded IRCTC / PA / PG refund files.
     """
     ref = normalize_lookup_key(reference_no)
+    try:
+        ref = str(int(float(ref)))
+    except:
+        pass
+
     if not ref or not special_refund_sp_map:
         return None
 
@@ -431,6 +436,13 @@ def get_chargeback(description):
 
 def get_payout(description):
     text = normalize_text(description)
+
+ # 🔥 Custom FT Mapping
+    if "FT-3017" in text:
+        return "Payout", "M000201"
+
+    if "FT-IOCL" in text:
+        return "Payout", "M00036"
 
     if text.startswith("NEFT") or text.startswith("FT"):
         return "Payout", extract_m_identifier(text)
@@ -825,12 +837,16 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
                 or "REF-1PAYM" in text
                 or text.startswith("CV PRCSD-")
                 or text.startswith("CV PRCSD")
+                or text.startswith("CR.VOUCHER PROCESSED")
                 ):
-            df.at[idx, "Tranaction Tag"] = "Refund"
-            df.at[idx, "SP Identifier/MID"] = ""
+                df.at[idx, "Tranaction Tag"] = "Refund"
+                df.at[idx, "SP Identifier/MID"] = ""
         
         
         
+        # 🟢 1CREDIT VOUCHER case (DO NOT override SP)
+        elif "1CREDIT VOUCHER" in text:
+                df.at[idx, "Tranaction Tag"] = "Refund"
         
         
         
@@ -851,10 +867,10 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
     # from the HDFC UPI refund file only when the SP cell is blank.
     if refund_rrn_map and "Reference No" in df.columns:
         for idx in df.index:
-            current_tag = safe_str(df.at[idx, "Tranaction Tag"]).strip()
+            current_tag = normalize_text(df.at[idx, "Tranaction Tag"])
             current_sp = safe_str(df.at[idx, "SP Identifier/MID"]).strip()
 
-            if current_tag == "Refund" and not current_sp:
+            if current_tag == "REFUND" and not current_sp:
                 ref_no = df.at[idx, "Reference No"]
                 resolved_sp = resolve_refund_sp_from_rrn(ref_no, refund_rrn_map)
                 if resolved_sp:
@@ -864,10 +880,10 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
     # IRCTC Refund / PA Refund / PG Refund uploads.
     if special_refund_sp_map and "Reference No" in df.columns:
         for idx in df.index:
-            current_tag = safe_str(df.at[idx, "Tranaction Tag"]).strip()
+            current_tag = normalize_text(df.at[idx, "Tranaction Tag"])
             current_sp = safe_str(df.at[idx, "SP Identifier/MID"]).strip()
 
-            if current_tag == "Refund" and not current_sp:
+            if current_tag == "REFUND" and not current_sp:
                 ref_no = df.at[idx, "Reference No"]
                 resolved_sp = resolve_special_refund_sp_from_reference(ref_no, special_refund_sp_map)
                 if resolved_sp:
