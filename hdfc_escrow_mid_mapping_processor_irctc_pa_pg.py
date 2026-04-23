@@ -825,7 +825,7 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
                 or "REF-1PAYM" in text
                 or text.startswith("CV PRCSD-")
                 or text.startswith("CV PRCSD")
-                or text.startswith("Cr.Voucher Processed")
+                or text.startswith("CR.VOUCHER PROCESSED")
                 ):
             df.at[idx, "Tranaction Tag"] = "Refund"
             df.at[idx, "SP Identifier/MID"] = ""
