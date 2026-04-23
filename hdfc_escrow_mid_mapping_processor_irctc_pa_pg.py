@@ -813,15 +813,32 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
 
 
             # 🔥 REFUND OVERRIDE (for 1CREDIT VOUCHER etc.)
+    # for idx in df.index:
+    #     description = df.at[idx, "Description"]
+        
+    #     refund_tag, refund_sp = get_refund(
+    #         description,
+    #         df.at[idx, "Tranaction Tag"],
+    #         df.at[idx, "SP Identifier/MID"]
+    #         )
+    #     if refund_tag == "Refund":
+    #         df.at[idx, "Tranaction Tag"] = "Refund"
+    #         df.at[idx, "SP Identifier/MID"] = ""
+
+
+
+ 
+             # 🔥 ADDITIONAL REFUND OVERRIDE (specific cases only)
+
     for idx in df.index:
         description = df.at[idx, "Description"]
-        
-        refund_tag, refund_sp = get_refund(
-            description,
-            df.at[idx, "Tranaction Tag"],
-            df.at[idx, "SP Identifier/MID"]
-            )
-        if refund_tag == "Refund":
+        text = normalize_text(description)
+        if (
+                "1CREDIT VOUCHER" in text
+                or "REF-1PAYM" in text
+                or text.startswith("CV PRCSD-")
+                or text.startswith("CV PRCSD")
+                ):
             df.at[idx, "Tranaction Tag"] = "Refund"
             df.at[idx, "SP Identifier/MID"] = ""
             
