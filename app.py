@@ -6,8 +6,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 APP_FILE = os.path.join(BASE_DIR, "1.py")
 #HDFC_FILE = os.path.join(BASE_DIR, "final2.py")
-HDFC_FILE = os.path.join(BASE_DIR, "hdfc_escrow_mid_mapping_processor_irctc_pa_pg.py")
-#HDFC_FILE = os.path.join(BASE_DIR, "New_HDFC.py")
+#HDFC_FILE = os.path.join(BASE_DIR, "hdfc_escrow_mid_mapping_processor_irctc_pa_pg.py")
+HDFC_FILE = os.path.join(BASE_DIR, "New_HDFC.py")
 
 CROSSCHECK_FILE = os.path.join(BASE_DIR, "test_hdfc_upi_fixed.py")
 
