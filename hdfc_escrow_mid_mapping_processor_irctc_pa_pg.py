@@ -174,7 +174,7 @@ def build_arn_merchant_refund_sp_map(refund_df):
 
     for _, row in refund_df.iterrows():
         arn = normalize_lookup_key(row.get(arn_col, ""))
-        merchant_id = safe_str(row.get(merchant_col, "")).strip()
+        merchant_id = normalize_lookup_key(row.get(merchant_col, ""))
         if arn and merchant_id:
             mapping[arn] = merchant_id
 
@@ -429,24 +429,9 @@ def get_chargeback(description):
     return None, None
 
 
-# def get_payout(description):
-#     text = normalize_text(description)
-
-#     if text.startswith("NEFT") or text.startswith("FT"):
-#         return "Payout", extract_m_identifier(text)
-
-#     return None, None
 def get_payout(description):
     text = normalize_text(description)
 
-    # 🔥 Custom FT Mapping
-    if "FT-3017" in text:
-        return "Payout", "M000201"
-
-    if "FT-IOCL" in text:
-        return "Payout", "M00036"
-
-    # 🔥 Default logic
     if text.startswith("NEFT") or text.startswith("FT"):
         return "Payout", extract_m_identifier(text)
 
@@ -775,15 +760,9 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
                 tag, sp = get_fd_mapping(description)
 
 
-        #end mai ye run hoga
-        # if tag is None and row_tag_allowed(flag, "REFUND"):
-        #     tag, sp = get_refund(description, current_tag="")
-
-
-     
         #2nd ye run hoga 
-        # if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
-        #     tag, sp = get_chargeback(description)
+        if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
+            tag, sp = get_chargeback(description)
  
     
         #3rd ye run hoga 
@@ -795,21 +774,19 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
             tag, sp = get_payout(description)
 
 
+
         # if tag is None and row_tag_allowed(flag, "MDR"):
         #     tag, sp = get_mdr(description)
 
 
         #end mai ye run hoga
         if tag is None and row_tag_allowed(flag, "REFUND"):
-            tag, sp = get_refund(description)
-
-             #2nd ye run hoga isko end mai kar diya 
-        if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
-            tag, sp = get_chargeback(description, current_tag="")
+            tag, sp = get_refund(description, current_tag="")
 
         if tag is not None:
             df.at[idx, "Tranaction Tag"] = tag
             df.at[idx, "SP Identifier/MID"] = sp if sp is not None else ""
+
 
 
 
@@ -836,8 +813,9 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
 
 
 
- 
-             # 🔥 ADDITIONAL REFUND OVERRIDE (specific cases only)
+
+
+            # 🔥 ADDITIONAL REFUND OVERRIDE (specific cases only)
 
     for idx in df.index:
         description = df.at[idx, "Description"]
@@ -851,20 +829,24 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
                 ):
             df.at[idx, "Tranaction Tag"] = "Refund"
             df.at[idx, "SP Identifier/MID"] = ""
-            
+        
+        
+        
+        
+        
+        
+    
+
+
+ 
+    
+ 
+    
+ 
+    
 
 
     df = mark_knock_off_rows(df)
-
-
-
-
-
-
-
-
-
-
 
     # New requirement: for rows already tagged as Refund, fill SP Identifier/MID
     # from the HDFC UPI refund file only when the SP cell is blank.
@@ -904,20 +886,11 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
     return df
 
 
-
-
-
-
-
-
-
-
-
-
 def write_logic_columns_to_sheet(ws, df):
     for row_idx, (_, record) in enumerate(df.iterrows(), start=2):
         ws.cell(row=row_idx, column=DEST_TAG_COL, value=record.get("Tranaction Tag", ""))
-        ws.cell(row=row_idx, column=DEST_SP_COL, value=record.get("SP Identifier/MID", ""))
+        sp_cell = ws.cell(row=row_idx, column=DEST_SP_COL, value=record.get("SP Identifier/MID", ""))
+        sp_cell.number_format = 'General'
         ws.cell(row=row_idx, column=DEST_SPLIT_REFUND_COL, value=record.get("Split Refunds", ""))
 
 
