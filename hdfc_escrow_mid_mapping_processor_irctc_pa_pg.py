@@ -429,9 +429,24 @@ def get_chargeback(description):
     return None, None
 
 
-def get_payout(description):
+# def get_payout(description):
+#     text = normalize_text(description)
+
+#     if text.startswith("NEFT") or text.startswith("FT"):
+#         return "Payout", extract_m_identifier(text)
+
+#     return None, None
+ def get_payout(description):
     text = normalize_text(description)
 
+    # 🔥 Custom FT Mapping
+    if "FT-3017" in text:
+        return "Payout", "M000201"
+
+    if "FT-IOCL" in text:
+        return "Payout", "M00036"
+
+    # 🔥 Default logic
     if text.startswith("NEFT") or text.startswith("FT"):
         return "Payout", extract_m_identifier(text)
 
