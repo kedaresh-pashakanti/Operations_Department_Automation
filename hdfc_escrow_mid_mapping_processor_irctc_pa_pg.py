@@ -775,9 +775,15 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
                 tag, sp = get_fd_mapping(description)
 
 
+        #end mai ye run hoga
+        # if tag is None and row_tag_allowed(flag, "REFUND"):
+        #     tag, sp = get_refund(description, current_tag="")
+
+
+     
         #2nd ye run hoga 
-        if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
-            tag, sp = get_chargeback(description)
+        # if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
+        #     tag, sp = get_chargeback(description)
  
     
         #3rd ye run hoga 
@@ -789,14 +795,17 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
             tag, sp = get_payout(description)
 
 
-
         # if tag is None and row_tag_allowed(flag, "MDR"):
         #     tag, sp = get_mdr(description)
 
 
         #end mai ye run hoga
         if tag is None and row_tag_allowed(flag, "REFUND"):
-            tag, sp = get_refund(description, current_tag="")
+            tag, sp = get_refund(description)
+
+             #2nd ye run hoga isko end mai kar diya 
+        if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
+            tag, sp = get_chargeback(description, current_tag="")
 
         if tag is not None:
             df.at[idx, "Tranaction Tag"] = tag
