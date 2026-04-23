@@ -504,6 +504,13 @@ def get_refund(description, current_tag="", current_sp=""):
     # 🔥 IMPORTANT FIX
     if "1CREDIT VOUCHER" in text:
         return "Refund", ""   # always override
+# add on
+     # 🔥 IMPORTANT FIX
+    if "REF-1PAYM" in text:
+        return "Refund", ""   # always override
+# add on 
+    if text.startswith("CV prcsd-") or text.startswith("CV prcsd"):
+        return "Refund", ""
 
     return None, None
 
