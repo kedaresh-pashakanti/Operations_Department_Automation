@@ -834,11 +834,14 @@ def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
                 or text.startswith("CV PRCSD")
                 or text.startswith("CR.VOUCHER PROCESSED")
                 ):
-            df.at[idx, "Tranaction Tag"] = "Refund"
-            df.at[idx, "SP Identifier/MID"] = ""
+                df.at[idx, "Tranaction Tag"] = "Refund"
+                df.at[idx, "SP Identifier/MID"] = ""
         
         
         
+        # 🟢 1CREDIT VOUCHER case (DO NOT override SP)
+        elif "1CREDIT VOUCHER" in text:
+                df.at[idx, "Tranaction Tag"] = "Refund"
         
         
         
