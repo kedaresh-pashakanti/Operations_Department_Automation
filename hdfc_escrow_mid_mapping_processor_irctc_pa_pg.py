@@ -436,7 +436,7 @@ def get_chargeback(description):
 #         return "Payout", extract_m_identifier(text)
 
 #     return None, None
- def get_payout(description):
+def get_payout(description):
     text = normalize_text(description)
 
     # 🔥 Custom FT Mapping
