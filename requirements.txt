@@ -1,8 +1,8 @@
-streamlit==1.25.0
-pandas==2.0.3
-numpy==1.24.4
-polars==0.19.19
+streamlit==1.28.2
+pandas==2.1.4
+numpy==1.26.4
+polars==0.20.31
 openpyxl==3.1.2
-xlsxwriter==3.1.2
-pyarrow==12.0.1
+xlsxwriter==3.1.9
+pyarrow==14.0.2
 requests==2.31.0
