@@ -69,7 +69,7 @@ MPR_RULES = [
         "KKBK0000958-NEFT POS ACQUIRING RECEIVABLES",
         "UPI MERCHANT ACQUIRING RECEIVABL",
     ], "20-KotakUPI"),
-    (["KKBK0000958-Juspay UPI Inward pool"], "25-KotakJusPay UPI"),
+    (["'KKBK0000958-Juspay UPI Inward pool"], "25-KotakJusPay UPI"),
 ]
 
 # ---------------------------------------------------------------------
