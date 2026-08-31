@@ -1302,7 +1302,7 @@ MID_SP_ALIAS_MAP = {
     "Bildesk": ["bildesk","Billdesk", "Bildesk"],
     "MobilewareUPI": ["MobilewareUPI"],
     "Kotak UPI": ["KotakUPI", "Kotak UPI"],
-    "KotakJusPay_UPI": ["KotakJusPay UPI","KotakJusPay_UPI","20-KotakJusPay UPI",],
+    "KotakJusPay_UPI": ["KotakJusPay UPI","KotakJusPay_UPI","25-KotakJusPay UPI",],
 }
 
 def _safe_numeric_sum(series):
@@ -1576,7 +1576,7 @@ SQL_SP_LABELS = {
     "Bildesk": "18-Billdesk",
     "Kotak UPI": "20-KotakUPI",
     "ATOM NB - Refund": "5-Atom NB - Refund",
-    "KotakJusPay_UPI": "20-KotakJusPay UPI",
+    "KotakJusPay_UPI": "25-KotakJusPay UPI",
 }
 
 def _match_col(df, *candidates):
@@ -2117,9 +2117,9 @@ def build_sql_style_report(excel_data, selected_mpr_date):
 
                 sp_name_series = type_values.apply(
                     lambda x:
-                        "20-KotakJusPay UPI"
+                        "25-KotakJusPay UPI"
                         if x.upper() == "PAY" or x == ""
-                        else f"20-KotakJusPay UPI - {x}"
+                        else f"25-KotakJusPay UPI - {x}"
                 )
 
                 # -------------------------------------------------
