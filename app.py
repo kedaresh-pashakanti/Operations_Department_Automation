@@ -60,9 +60,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 APP_FILE = os.path.join(BASE_DIR, "1.py")
 HDFC_FILE = os.path.join(BASE_DIR, "New_HDFC.py")
-#CROSSCHECK_FILE = os.path.join(BASE_DIR, "test_hdfc_upi_fixed.py")
+CROSSCHECK_FILE = os.path.join(BASE_DIR, "test_hdfc_upi_fixed.py")
 
-CROSSCHECK_FILE = os.path.join(BASE_DIR, "kotak_added_in_mid.py")
+#CROSSCHECK_FILE = os.path.join(BASE_DIR, "kotak_added_in_mid.py")
 
 
 # Main app config
