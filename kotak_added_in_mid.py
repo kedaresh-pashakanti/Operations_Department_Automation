@@ -639,25 +639,25 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
             for col in df.columns:
                 norm = normalize_col_name(col)
 
-                if norm in {"srno", "srnumber"}:
+                if norm in {"srno", "srnumber", "SR No."}:
                     col_map[col] = "SR_No"
 
-                elif norm == "bankid":
+                elif norm == "Bank Id":
                     col_map[col] = "Bank_Id"
 
-                elif norm == "bankname":
+                elif norm == "Bank Name":
                     col_map[col] = "Bank_Name"
 
-                elif norm == "tpsltransactionid":
+                elif norm == "TPSL Transaction id":
                     col_map[col] = "TPSL_Transaction_id"
 
-                elif norm == "smtransactionid":
+                elif norm == "Sm Transaction Id":
                     col_map[col] = "SM_Transaction_Id"
 
-                elif norm == "banktransactionid":
+                elif norm == "Bank Transaction id":
                     col_map[col] = "Bank_Transaction_id"
 
-                elif norm == "totalamount":
+                elif norm == "Total Amount":
                     col_map[col] = "Total_Amount"
 
                 elif norm == "charges":
@@ -666,25 +666,25 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
                 elif norm == "taxes":
                     col_map[col] = "Taxes"
 
-                elif norm == "netamount":
+                elif norm == "Net Amount":
                     col_map[col] = "Net_Amount"
 
-                elif norm == "transactiondate":
+                elif norm == "Transaction date":
                     col_map[col] = "Transaction_Date"
 
-                elif norm == "transactiontime":
+                elif norm == "Transaction time":
                     col_map[col] = "Transaction_Time"
 
-                elif norm == "paymentdate":
+                elif norm == "Payment Date":
                     col_map[col] = "Payment_Date"
 
-                elif norm == "srcitc":
+                elif norm == "SRC ITC":
                     col_map[col] = "SRC_ITC"
 
-                elif norm == "merchantid":
-                    col_map[col] = "Merchant_ID"
+                # elif norm == "merchantid":
+                #     col_map[col] = "Merchant_ID"
 
-                elif norm == "paymentmode":
+                elif norm == "Payment Mode":
                     col_map[col] = "Payment_Mode"
 
             df = df.rename(columns=col_map)
@@ -707,7 +707,6 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
                 "Transaction_Time",
                 "Payment_Date",
                 "SRC_ITC",
-                "Merchant_ID",
                 "Payment_Mode",
             ]
 
