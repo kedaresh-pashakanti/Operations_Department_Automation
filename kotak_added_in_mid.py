@@ -777,12 +777,12 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     elif key == "worldline_nb":
         try:
 
-        #  df = find_header_row_and_reframe(
-        #     df,
-        #     ["Net Amount", "Charges", "Bank Bank Transaction id"]
-        # )
+         df = find_header_row_and_reframe(
+            df,
+            ["Net Amount", "Charges", "Bank Bank Transaction id"]
+        )
          
-         df = find_worldline_header_and_reframe(df)
+         # df = find_worldline_header_and_reframe(df)
 
         # 🔥 Normalize columns
          col_map = {}
