@@ -841,8 +841,8 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
 
         # 🔥 Ensure required columns exist
          required_cols = [
-            "SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "Sm_Transaction_Id", "SM_Transaction_Id", "Bank_Transaction_id",
-            "Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
+            "SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "SM_Transaction_Id", "Bank_Transaction_id",
+            "Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
         ]
 
          for col in required_cols:
@@ -863,7 +863,7 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
         # 🔥 Final column order
          df = df[[
 "SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "SM_Transaction_Id", "Bank_Transaction_id",
-"Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
+"Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
         ]]
          
          
