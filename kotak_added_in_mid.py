@@ -134,24 +134,21 @@ def find_header_row_and_reframe(df, keywords, max_scan_rows=15):
 
 
 
-
-
-
 # =========================================================
-# WORLDLINE NB - EXACT HEADER SEARCH
+# WORLDLINE NB - RAW HEADER SEARCH
 # =========================================================
 def find_worldline_header_and_reframe(df):
     """
-    Worldline-specific header detection.
+    Worldline-specific raw file handling.
 
-    Searches the raw file for the actual Worldline transaction
-    header containing the expected 15 columns.
+    Searches the complete dataframe for the actual Worldline
+    transaction header.
 
-    Once found:
-        header row     -> column names
-        rows below it  -> transaction data
+    Once the header is found:
+        - header row becomes column names
+        - everything below becomes transaction data
 
-    Does NOT affect any other vendor.
+    Used ONLY for Worldline NB.
     """
 
     if df is None or df.empty:
@@ -177,65 +174,79 @@ def find_worldline_header_and_reframe(df):
         "Payment Mode",
     ]
 
-    expected_norm = [
+    expected_norm = {
         normalize_col_name(x)
         for x in expected_headers
-    ]
+    }
 
-    # Search the raw file for the exact Worldline header row.
+    # ---------------------------------------------------------
+    # Search every row for the Worldline header.
+    # We do NOT require exact column count.
+    # ---------------------------------------------------------
     for row_idx in range(len(raw_df)):
 
         row_values = raw_df.iloc[row_idx].tolist()
 
-        # Normalize every cell in this row
-        row_norm = [
+        row_norm = {
             normalize_col_name(x)
             for x in row_values
-        ]
+            if pd.notna(x)
+        }
 
-        # We need the complete Worldline header structure.
-        # Allow extra blank columns, but the 15 expected headers
-        # must be present in the row.
-        matched_headers = 0
+        matched_headers = len(
+            expected_norm.intersection(row_norm)
+        )
 
-        for expected in expected_norm:
-            if expected in row_norm:
-                matched_headers += 1
+        # Worldline header should contain most of these fields.
+        if matched_headers >= 12:
 
-        # Exact Worldline header found
-        if matched_headers == len(expected_norm):
-
-            # Use the actual header row
+            # IMPORTANT:
+            # Keep the original header row exactly as it appears.
             header = [
                 str(x).strip()
                 for x in row_values
             ]
 
-            # Everything BELOW the header is the transaction data
+            # Everything below header = transaction data
             data_df = raw_df.iloc[row_idx + 1:].copy()
 
-            # Assign actual source headers
+            # Make sure column counts match
+            if len(header) != data_df.shape[1]:
+
+                # If there are more columns than expected,
+                # preserve them but create safe names.
+                if len(header) < data_df.shape[1]:
+                    header.extend(
+                        [
+                            f"Extra_{i}"
+                            for i in range(
+                                len(header),
+                                data_df.shape[1]
+                            )
+                        ]
+                    )
+
+                # If header has extra blank columns,
+                # trim only the header.
+                elif len(header) > data_df.shape[1]:
+                    header = header[:data_df.shape[1]]
+
             data_df.columns = header
 
-            # Remove duplicate columns, if any
+            # Remove duplicate column names
             data_df = data_df.loc[
                 :,
                 ~data_df.columns.duplicated()
             ]
 
-            # Remove completely blank rows only.
-            # IMPORTANT: Do NOT filter based on SR_No here.
+            # Remove completely blank rows
             data_df = data_df.dropna(
                 how="all"
             ).reset_index(drop=True)
 
             return data_df
 
-    # Header not found
     return pd.DataFrame()
-
-
-
 
 
 
@@ -755,43 +766,151 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
             # Read raw CSV with header=None because the actual
             # transaction header appears later in the report.
             # ---------------------------------------------------------
-            if file_bytes is not None and ext == "csv":
+            # if file_bytes is not None and ext == "csv":
 
-                delimiter = detect_delimiter_from_bytes(file_bytes)
+            #     delimiter = detect_delimiter_from_bytes(file_bytes)
 
-                raw_df = pd.read_csv(
-                    BytesIO(file_bytes),
-                    sep=delimiter,
-                    header=None,
-                    dtype=str,
-                    engine="python",
-                    on_bad_lines="skip",
-                )
-
-            # elif file_bytes is not None and ext in ["xlsx", "xls"]:
-
-            #     raw_df = pd.read_excel(
+            #     raw_df = pd.read_csv(
             #         BytesIO(file_bytes),
-            #         engine="openpyxl",
+            #         sep=delimiter,
             #         header=None,
-            #         dtype=object,
+            #         dtype=str,
+            #         engine="python",
+            #         on_bad_lines="skip",
             #     )
 
+            # # elif file_bytes is not None and ext in ["xlsx", "xls"]:
+
+            # #     raw_df = pd.read_excel(
+            # #         BytesIO(file_bytes),
+            # #         engine="openpyxl",
+            # #         header=None,
+            # #         dtype=object,
+            # #     )
+
+            # else:
+            #     raw_df = df.copy()
+
+            # # ---------------------------------------------------------
+            # # Find actual Worldline transaction header
+            # # ---------------------------------------------------------
+            # # df = find_header_row_and_reframe(
+            # #     raw_df,
+            # #     [
+            # #         "SR No.",
+            # #         "Total Amount",
+            # #         "Net Amount",
+            # #     ],
+            # #     max_scan_rows=40,
+            # # )
+            
+            
+            if file_bytes is not None and ext == "csv":
+                
+                raw_df = None
+                
+                # Try common delimiters.
+                for sep in [",", "|", "~", "\t"]:
+                    
+                    try:
+                        
+                        test_df = pd.read_csv(
+                        BytesIO(file_bytes),
+                        sep=sep,
+                        header=None,
+                        dtype=str,
+                        engine="python",
+                        on_bad_lines="skip",
+                        )
+                        
+                        
+                        if test_df is None or test_df.empty:
+                            continue
+                        
+                        # Check whether this parsing contains the
+                        # Worldline header somewhere in the file.
+                        
+                        
+                        expected_headers = {
+                            "srno",
+                            "bankid",
+                            "bankname",
+                            "tpsltransactionid",
+                            "smtransactionid",
+                            "banktransactionid",
+                            "totalamount",
+                            "charges",
+                            "taxes",
+                            "netamount",
+                            "transactiondate",
+                            "transactiontime",
+                            "paymentdate",
+                            "srcitc",
+                            "paymentmode",
+                             }
+                        
+                        
+                        found_header = False
+                        
+                        for _, row in test_df.iterrows():
+                            
+                            row_norm = {
+                                normalize_col_name(str(x).strip())
+                                for x in row.tolist()
+                                if pd.notna(x)
+                                }
+                            
+                            matched = len(
+                                expected_headers.intersection(row_norm)
+                                )
+                            
+                            if matched >= 12:
+                                found_header = True
+                                break
+                            
+                        if found_header:
+                            raw_df = test_df
+                            break
+                        
+                        
+                        
+                    except Exception:
+                        continue
+                    
+                if raw_df is None:
+                        raw_df = df.copy()
+                        
             else:
+                    
                 raw_df = df.copy()
 
-            # ---------------------------------------------------------
-            # Find actual Worldline transaction header
-            # ---------------------------------------------------------
-            # df = find_header_row_and_reframe(
-            #     raw_df,
-            #     [
-            #         "SR No.",
-            #         "Total Amount",
-            #         "Net Amount",
-            #     ],
-            #     max_scan_rows=40,
-            # )
+
+
+
+
+            
+            
+        
+        
+
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
             
             df = find_worldline_header_and_reframe(raw_df)
 
