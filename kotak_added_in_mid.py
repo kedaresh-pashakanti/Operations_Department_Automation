@@ -409,13 +409,13 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
                     on_bad_lines="skip",
                     )
                 
-            elif file_bytes is not None and ext in ["xlsx", "xls"]:
-                raw_df = pd.read_excel(
-                    BytesIO(file_bytes),
-                    engine="openpyxl",
-                    header=None,
-                    dtype=object,
-                    )
+            # elif file_bytes is not None and ext in ["xlsx", "xls"]:
+            #     raw_df = pd.read_excel(
+            #         BytesIO(file_bytes),
+            #         engine="openpyxl",
+            #         header=None,
+            #         dtype=object,
+            #         )
                 
             else:
                 
@@ -606,14 +606,14 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
                     on_bad_lines="skip",
                 )
 
-            elif file_bytes is not None and ext in ["xlsx", "xls"]:
+            # elif file_bytes is not None and ext in ["xlsx", "xls"]:
 
-                raw_df = pd.read_excel(
-                    BytesIO(file_bytes),
-                    engine="openpyxl",
-                    header=None,
-                    dtype=object,
-                )
+            #     raw_df = pd.read_excel(
+            #         BytesIO(file_bytes),
+            #         engine="openpyxl",
+            #         header=None,
+            #         dtype=object,
+            #     )
 
             else:
                 raw_df = df.copy()
