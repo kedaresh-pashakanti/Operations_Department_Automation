@@ -579,28 +579,84 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     # =========================
     elif key == "yes_nb":
         try:
-
-         df = find_header_row_and_reframe(
-            df,
-            ["Amount", "Service Charges", "Bank Reference"]
-        )
-         
+            
+            
+            
+            
+# =========================================================
+# YES BANK RAW FILE = CSV
+#
+# IMPORTANT:
+# Read the original CSV again with header=None.
+# This preserves:
+#   Row 1 -> Account Number
+#   Row 2 -> From date
+#   Row 3 -> To date
+#   Row 5 -> Actual transaction header
+#   Row 7+ -> Actual transaction data
+#
+# This change is ONLY for YES NB.
+# =========================================================
+            
+            if file_bytes is not None and ext == "csv":
+                
+                
+                delimiter = detect_delimiter_from_bytes(file_bytes)
+                
+                raw_df = pd.read_csv(
+                    BytesIO(file_bytes),
+                    sep=delimiter,
+                    header=None,
+                    dtype=str,
+                    engine="python",
+                    on_bad_lines="skip"
+                     )
+                
+            else:
+                
+                raw_df = df.copy()
+                
+                
+                
+            
+                
+                
+        # =========================================================
+        # FIND THE ACTUAL YES BANK HEADER
+        
+            df = find_header_row_and_reframe(
+            raw_df,
+            [
+                "Merchant Code",
+                "Client Code",
+                "Merchant Reference",
+                "Transaction Date",
+                "Amount",     
+                "Service Charges",
+                "Bank Reference",
+                "Transaction Status"],
+            max_scan_rows=20
+            )
+        
          
          
          # # Remove completely blank rows from YES Bank raw data
          # df = df.dropna(how="all").reset_index(drop=True)
          
          # Remove completely blank / whitespace-only rows
-         df = df[
+            df = df[
              
              ~df.astype(str)
              .apply(lambda row: row.str.strip().eq("").all(), axis=1)
              ].reset_index(drop=True)
+            
+            
 
         # 🔥 Normalize columns
-         col_map = {}
-         for col in df.columns:
-            norm = normalize_col_name(col)
+            col_map = {}
+         
+            for col in df.columns:
+               norm = normalize_col_name(col)
 
             if "merchantcode" in norm:
                 col_map[col] = "Merchant_Code"
@@ -619,37 +675,37 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
             elif "transactionstatus" in norm:
                 col_map[col] = "Transaction_Status"
 
-         df = df.rename(columns=col_map)
+            df = df.rename(columns=col_map)
 
         # 🔥 Ensure required columns exist
-         required_cols = [
+            required_cols = [
             "Merchant_Code","Client_Code","Merchant_Reference",
             "Transaction_Date","Amount","Service_Charges",
             "Bank_Reference","Transaction_Status"
         ]
 
-         for col in required_cols:
-            if col not in df.columns:
+            for col in required_cols:
+               if col not in df.columns:
                 df[col] = ""
 
         # 🔥 FIX 1: Treat as TEXT (no scientific / no .0)
-         if "Merchant_Reference" in df.columns:
-            df["Merchant_Reference"] = df["Merchant_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
+            if "Merchant_Reference" in df.columns:
+               df["Merchant_Reference"] = df["Merchant_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
 
-         if "Bank_Reference" in df.columns:
-            df["Bank_Reference"] = df["Bank_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
+            if "Bank_Reference" in df.columns:
+               df["Bank_Reference"] = df["Bank_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
 
         # 🔥 FIX 2: Format Transaction Date
-         if "Transaction_Date" in df.columns:
-            df["Transaction_Date"] = pd.to_datetime(
+            if "Transaction_Date" in df.columns:
+               df["Transaction_Date"] = pd.to_datetime(
                 df["Transaction_Date"], errors="coerce"
             ).dt.strftime("%Y-%m-%d %H:%M:%S")
 
         # 🔥 Add MPR_Date
-         df["MPR_Date"] = MPR_DATE
+            df["MPR_Date"] = MPR_DATE
 
         # 🔥 Final column order
-         df = df[[
+            df = df[[
             "MPR_Date","Merchant_Code","Client_Code","Merchant_Reference",
             "Transaction_Date","Amount","Service_Charges",
             "Bank_Reference","Transaction_Status"
@@ -688,6 +744,27 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     # =========================
     # ICICI NB
     # =========================
