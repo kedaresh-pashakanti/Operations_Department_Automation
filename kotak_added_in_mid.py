@@ -868,6 +868,23 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
          
          
          
+         
+        # =========================================================
+        # FIX: WORLDLINE SUMMARY TOTAL
+        # Explicitly convert Net_Amount to numeric and use it
+        # for summary calculation.
+        # =========================================================
+        
+        
+         if "Net_Amount" in df.columns:
+            df["Net_Amount"] = to_numeric_series_cleanup(
+                df["Net_Amount"]
+                )
+            
+            
+        # Use this cleaned dataframe for total calculation
+         df.attrs["_calc_df"] = df.copy()
+         
         except Exception:
             pass
 
