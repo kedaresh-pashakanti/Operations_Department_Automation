@@ -777,10 +777,12 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     elif key == "worldline_nb":
         try:
 
-         df = find_header_row_and_reframe(
-            df,
-            ["Net Amount", "Charges", "Bank Bank Transaction id"]
-        )
+        #  df = find_header_row_and_reframe(
+        #     df,
+        #     ["Net Amount", "Charges", "Bank Bank Transaction id"]
+        # )
+         
+         df = find_worldline_header_and_reframe(df)
 
         # 🔥 Normalize columns
          col_map = {}
@@ -875,15 +877,13 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
         # for summary calculation.
         # =========================================================
         
+        # Worldline Net Amount must be numeric for summary calculation
+         df["Net_Amount"] = to_numeric_series_cleanup(df["Net_Amount"])
         
-         if "Net_Amount" in df.columns:
-            df["Net_Amount"] = to_numeric_series_cleanup(
-                df["Net_Amount"]
-                )
-            
-            
-        # Use this cleaned dataframe for total calculation
-         df.attrs["_calc_df"] = df.copy()
+        
+        # Explicit calculation dataframe for Worldline
+         df.attrs["_calc_df"] = df[["Net_Amount"]].copy()
+        
          
         except Exception:
             pass
