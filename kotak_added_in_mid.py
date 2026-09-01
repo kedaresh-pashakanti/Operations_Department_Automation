@@ -108,6 +108,168 @@ def find_header_row_and_reframe(df, keywords, max_scan_rows=15):
 
     return df_local
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =========================================================
+# WORLDLINE NB - EXACT HEADER SEARCH
+# =========================================================
+def find_worldline_header_and_reframe(df):
+    """
+    Worldline-specific header detection.
+
+    Searches the raw file for the actual Worldline transaction
+    header containing the expected 15 columns.
+
+    Once found:
+        header row     -> column names
+        rows below it  -> transaction data
+
+    Does NOT affect any other vendor.
+    """
+
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    raw_df = df.copy()
+
+    expected_headers = [
+        "SR No.",
+        "Bank Id",
+        "Bank Name",
+        "TPSL Transaction id",
+        "Sm Transaction Id",
+        "Bank Transaction id",
+        "Total Amount",
+        "Charges",
+        "Taxes",
+        "Net Amount",
+        "Transaction date",
+        "Transaction time",
+        "Payment Date",
+        "SRC ITC",
+        "Payment Mode",
+    ]
+
+    expected_norm = [
+        normalize_col_name(x)
+        for x in expected_headers
+    ]
+
+    # Search the raw file for the exact Worldline header row.
+    for row_idx in range(len(raw_df)):
+
+        row_values = raw_df.iloc[row_idx].tolist()
+
+        # Normalize every cell in this row
+        row_norm = [
+            normalize_col_name(x)
+            for x in row_values
+        ]
+
+        # We need the complete Worldline header structure.
+        # Allow extra blank columns, but the 15 expected headers
+        # must be present in the row.
+        matched_headers = 0
+
+        for expected in expected_norm:
+            if expected in row_norm:
+                matched_headers += 1
+
+        # Exact Worldline header found
+        if matched_headers == len(expected_norm):
+
+            # Use the actual header row
+            header = [
+                str(x).strip()
+                for x in row_values
+            ]
+
+            # Everything BELOW the header is the transaction data
+            data_df = raw_df.iloc[row_idx + 1:].copy()
+
+            # Assign actual source headers
+            data_df.columns = header
+
+            # Remove duplicate columns, if any
+            data_df = data_df.loc[
+                :,
+                ~data_df.columns.duplicated()
+            ]
+
+            # Remove completely blank rows only.
+            # IMPORTANT: Do NOT filter based on SR_No here.
+            data_df = data_df.dropna(
+                how="all"
+            ).reset_index(drop=True)
+
+            return data_df
+
+    # Header not found
+    return pd.DataFrame()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def find_best_column(df, candidates):
     """
     Find the best amount column from candidates.
@@ -621,15 +783,17 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
             # ---------------------------------------------------------
             # Find actual Worldline transaction header
             # ---------------------------------------------------------
-            df = find_header_row_and_reframe(
-                raw_df,
-                [
-                    "SR No.",
-                    "Total Amount",
-                    "Net Amount",
-                ],
-                max_scan_rows=40,
-            )
+            # df = find_header_row_and_reframe(
+            #     raw_df,
+            #     [
+            #         "SR No.",
+            #         "Total Amount",
+            #         "Net Amount",
+            #     ],
+            #     max_scan_rows=40,
+            # )
+            
+            df = find_worldline_header_and_reframe(raw_df)
 
             # ---------------------------------------------------------
             # Normalize Worldline columns
@@ -720,14 +884,14 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
             # Worldline summary/header/footer rows won't have numeric
             # SR_No, so they will be removed.
             # ---------------------------------------------------------
-            df["SR_No"] = pd.to_numeric(
-                df["SR_No"],
-                errors="coerce"
-            )
+            # df["SR_No"] = pd.to_numeric(
+            #     df["SR_No"],
+            #     errors="coerce"
+            # )
 
-            df = df[
-                df["SR_No"].notna()
-            ].copy().reset_index(drop=True)
+            # df = df[
+            #     df["SR_No"].notna()
+            # ].copy().reset_index(drop=True)
 
             # ---------------------------------------------------------
             # Keep transaction IDs as TEXT
