@@ -554,145 +554,139 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
         except Exception:
             pass
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # =========================
     # YES NB
     # =========================
     elif key == "yes_nb":
         try:
 
-            
-
-
-
-            # ---------------------------------------------------------
-            # YES Bank RAW FILE = CSV
-            # Read again with header=None because the actual transaction
-            # header is not necessarily the first row.
-            # ---------------------------------------------------------
-            
-            if file_bytes is not None and ext == "csv":
-                delimiter = detect_delimiter_from_bytes(file_bytes)
-                
-                raw_df = pd.read_csv(
-                    BytesIO(file_bytes),
-                    sep=delimiter,
-                    header=None,
-                    dtype=str,
-                    engine="python",
-                    on_bad_lines="skip",
-                    )
-                
-            # elif file_bytes is not None and ext in ["xlsx", "xls"]:
-            #     raw_df = pd.read_excel(
-            #         BytesIO(file_bytes),
-            #         engine="openpyxl",
-            #         header=None,
-            #         dtype=object,
-            #         )
-                
-            else:
-                
-                raw_df = df.copy()
-
-
-
-            # ---------------------------------------------------------
-            # Find actual YES Bank transaction header
-            # ---------------------------------------------------------
-            df = find_header_row_and_reframe(
-            raw_df,
-            ["Amount", "Service Charges", "Bank Reference"],
+         df = find_header_row_and_reframe(
+            df,
+            ["Amount", "Service Charges", "Bank Reference"]
         )
+         
+         
+         
+         # # Remove completely blank rows from YES Bank raw data
+         # df = df.dropna(how="all").reset_index(drop=True)
+         
+         # Remove completely blank / whitespace-only rows
+         df = df[
+             
+             ~df.astype(str)
+             .apply(lambda row: row.str.strip().eq("").all(), axis=1)
+             ].reset_index(drop=True)
 
         # 🔥 Normalize columns
-            col_map = {}
-            
-            for col in df.columns:
-               norm = normalize_col_name(col)
-               
-               
+         col_map = {}
+         for col in df.columns:
+            norm = normalize_col_name(col)
 
-               if "merchantcode" in norm:
-                    col_map[col] = "Merchant_Code"
+            if "merchantcode" in norm:
+                col_map[col] = "Merchant_Code"
+            elif "clientcode" in norm:
+                col_map[col] = "Client_Code"
+            elif "merchantreference" in norm:
+                col_map[col] = "Merchant_Reference"
+            elif "transactiondate" in norm:
+                col_map[col] = "Transaction_Date"
+            elif norm == "amount":
+                col_map[col] = "Amount"
+            elif "servicecharges" in norm:
+                col_map[col] = "Service_Charges"
+            elif "bankreference" in norm:
+                col_map[col] = "Bank_Reference"
+            elif "transactionstatus" in norm:
+                col_map[col] = "Transaction_Status"
 
-               elif "clientcode" in norm:
-                    col_map[col] = "Client_Code"
-
-               elif "merchantreference" in norm:
-                    col_map[col] = "Merchant_Reference"
-
-               elif "transactiondate" in norm:
-                    col_map[col] = "Transaction_Date"
-
-               elif norm == "amount":
-                    col_map[col] = "Amount"
-
-               elif "servicecharges" in norm:
-                    col_map[col] = "Service_Charges"
-
-               elif "bankreference" in norm:
-                    col_map[col] = "Bank_Reference"
-
-               elif "transactionstatus" in norm:
-                    col_map[col] = "Transaction_Status"
-                    
-                    
-
-            df = df.rename(columns=col_map)
+         df = df.rename(columns=col_map)
 
         # 🔥 Ensure required columns exist
-        
-            required_cols = [
+         required_cols = [
             "Merchant_Code","Client_Code","Merchant_Reference",
             "Transaction_Date","Amount","Service_Charges",
             "Bank_Reference","Transaction_Status"
         ]
-            
-            for col in required_cols:
-               if col not in df.columns:
+
+         for col in required_cols:
+            if col not in df.columns:
                 df[col] = ""
-                
 
         # 🔥 FIX 1: Treat as TEXT (no scientific / no .0)
-            if "Merchant_Reference" in df.columns:
-               df["Merchant_Reference"] = df["Merchant_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
+         if "Merchant_Reference" in df.columns:
+            df["Merchant_Reference"] = df["Merchant_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
 
-            if "Bank_Reference" in df.columns:
-               df["Bank_Reference"] = df["Bank_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
+         if "Bank_Reference" in df.columns:
+            df["Bank_Reference"] = df["Bank_Reference"].astype(str).str.replace(r"\.0$", "", regex=True)
 
         # 🔥 FIX 2: Format Transaction Date
-            if "Transaction_Date" in df.columns:
-               df["Transaction_Date"] = pd.to_datetime(
-                   df["Transaction_Date"], errors="coerce"
-               ).dt.strftime("%Y-%m-%d %H:%M:%S")
-               
-               
-               
-            # ---------------------------------------------------------
-            # IMPORTANT:
-            # Convert Amount columns to REAL NUMBERS
-            # ---------------------------------------------------------
-            
-            df["Amount"] = to_numeric_series_cleanup(
-                df["Amount"]
-                )
-            
-            
-            df["Service_Charges"] = to_numeric_series_cleanup(
-                df["Service_Charges"]
-            )
+         if "Transaction_Date" in df.columns:
+            df["Transaction_Date"] = pd.to_datetime(
+                df["Transaction_Date"], errors="coerce"
+            ).dt.strftime("%Y-%m-%d %H:%M:%S")
 
         # 🔥 Add MPR_Date
-            df["MPR_Date"] = MPR_DATE
+         df["MPR_Date"] = MPR_DATE
 
         # 🔥 Final column order
-            df = df[[
+         df = df[[
             "MPR_Date","Merchant_Code","Client_Code","Merchant_Reference",
             "Transaction_Date","Amount","Service_Charges",
             "Bank_Reference","Transaction_Status"
         ]]
         except Exception:
             pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # =========================
     # ICICI NB
@@ -754,309 +748,16 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     # =========================
     # WORLDLINE NB
     # =========================
-    
-
-    # =========================
-    # WORLDLINE NB
-    # =========================
     elif key == "worldline_nb":
         try:
-            # ---------------------------------------------------------
-            # WORLDLINE RAW FILE = CSV
-            # Read raw CSV with header=None because the actual
-            # transaction header appears later in the report.
-            # ---------------------------------------------------------
-            # if file_bytes is not None and ext == "csv":
+        # 🔥 Treat IDs as TEXT
+            if "SM Transaction Id" in df.columns:
+             df["SM Transaction Id"] = df["SM Transaction Id"].astype(str).str.replace(r"\.0$", "", regex=True)
 
-            #     delimiter = detect_delimiter_from_bytes(file_bytes)
-
-            #     raw_df = pd.read_csv(
-            #         BytesIO(file_bytes),
-            #         sep=delimiter,
-            #         header=None,
-            #         dtype=str,
-            #         engine="python",
-            #         on_bad_lines="skip",
-            #     )
-
-            # # elif file_bytes is not None and ext in ["xlsx", "xls"]:
-
-            # #     raw_df = pd.read_excel(
-            # #         BytesIO(file_bytes),
-            # #         engine="openpyxl",
-            # #         header=None,
-            # #         dtype=object,
-            # #     )
-
-            # else:
-            #     raw_df = df.copy()
-
-            # # ---------------------------------------------------------
-            # # Find actual Worldline transaction header
-            # # ---------------------------------------------------------
-            # # df = find_header_row_and_reframe(
-            # #     raw_df,
-            # #     [
-            # #         "SR No.",
-            # #         "Total Amount",
-            # #         "Net Amount",
-            # #     ],
-            # #     max_scan_rows=40,
-            # # )
-            
-            
-            if file_bytes is not None and ext == "csv":
-                
-                raw_df = None
-                
-                # Try common delimiters.
-                for sep in [",", "|", "~", "\t"]:
-                    
-                    try:
-                        
-                        test_df = pd.read_csv(
-                        BytesIO(file_bytes),
-                        sep=sep,
-                        header=None,
-                        dtype=str,
-                        engine="python",
-                        on_bad_lines="skip",
-                        )
-                        
-                        
-                        if test_df is None or test_df.empty:
-                            continue
-                        
-                        # Check whether this parsing contains the
-                        # Worldline header somewhere in the file.
-                        
-                        
-                        expected_headers = {
-                            "srno",
-                            "bankid",
-                            "bankname",
-                            "tpsltransactionid",
-                            "smtransactionid",
-                            "banktransactionid",
-                            "totalamount",
-                            "charges",
-                            "taxes",
-                            "netamount",
-                            "transactiondate",
-                            "transactiontime",
-                            "paymentdate",
-                            "srcitc",
-                            "paymentmode",
-                             }
-                        
-                        
-                        found_header = False
-                        
-                        for _, row in test_df.iterrows():
-                            
-                            row_norm = {
-                                normalize_col_name(str(x).strip())
-                                for x in row.tolist()
-                                if pd.notna(x)
-                                }
-                            
-                            matched = len(
-                                expected_headers.intersection(row_norm)
-                                )
-                            
-                            if matched >= 12:
-                                found_header = True
-                                break
-                            
-                        if found_header:
-                            raw_df = test_df
-                            break
-                        
-                        
-                        
-                    except Exception:
-                        continue
-                    
-                if raw_df is None:
-                        raw_df = df.copy()
-                        
-            else:
-                    
-                raw_df = df.copy()
-
-
-
-
-
-            
-            
-        
-        
-
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            df = find_worldline_header_and_reframe(raw_df)
-
-            # ---------------------------------------------------------
-            # Normalize Worldline columns
-            # ---------------------------------------------------------
-            col_map = {}
-
-            for col in df.columns:
-                norm = normalize_col_name(col)
-
-                if norm in {"srno", "srnumber", "SR No."}:
-                    col_map[col] = "SR_No"
-
-                elif norm == "Bank Id":
-                    col_map[col] = "Bank_Id"
-
-                elif norm == "Bank Name":
-                    col_map[col] = "Bank_Name"
-
-                elif norm == "TPSL Transaction id":
-                    col_map[col] = "TPSL_Transaction_id"
-
-                elif norm == "Sm Transaction Id":
-                    col_map[col] = "SM_Transaction_Id"
-
-                elif norm == "Bank Transaction id":
-                    col_map[col] = "Bank_Transaction_id"
-
-                elif norm == "Total Amount":
-                    col_map[col] = "Total_Amount"
-
-                elif norm == "charges":
-                    col_map[col] = "Charges"
-
-                elif norm == "taxes":
-                    col_map[col] = "Taxes"
-
-                elif norm == "Net Amount":
-                    col_map[col] = "Net_Amount"
-
-                elif norm == "Transaction date":
-                    col_map[col] = "Transaction_Date"
-
-                elif norm == "Transaction time":
-                    col_map[col] = "Transaction_Time"
-
-                elif norm == "Payment Date":
-                    col_map[col] = "Payment_Date"
-
-                elif norm == "SRC ITC":
-                    col_map[col] = "SRC_ITC"
-
-                # elif norm == "merchantid":
-                #     col_map[col] = "Merchant_ID"
-
-                elif norm == "Payment Mode":
-                    col_map[col] = "Payment_Mode"
-
-            df = df.rename(columns=col_map)
-
-            # ---------------------------------------------------------
-            # Required Worldline columns
-            # ---------------------------------------------------------
-            required_cols = [
-                "SR_No",
-                "Bank_Id",
-                "Bank_Name",
-                "TPSL_Transaction_id",
-                "SM_Transaction_Id",
-                "Bank_Transaction_id",
-                "Total_Amount",
-                "Charges",
-                "Taxes",
-                "Net_Amount",
-                "Transaction_Date",
-                "Transaction_Time",
-                "Payment_Date",
-                "SRC_ITC",
-                "Payment_Mode",
-            ]
-
-            for col in required_cols:
-                if col not in df.columns:
-                    df[col] = ""
-
-            # ---------------------------------------------------------
-            # Keep ONLY transaction rows
-            #
-            # Worldline summary/header/footer rows won't have numeric
-            # SR_No, so they will be removed.
-            # ---------------------------------------------------------
-            # df["SR_No"] = pd.to_numeric(
-            #     df["SR_No"],
-            #     errors="coerce"
-            # )
-
-            # df = df[
-            #     df["SR_No"].notna()
-            # ].copy().reset_index(drop=True)
-
-            # ---------------------------------------------------------
-            # Keep transaction IDs as TEXT
-            # ---------------------------------------------------------
-            for text_col in [
-                "TPSL_Transaction_id",
-                "SM_Transaction_Id",
-                "Bank_Transaction_id",
-            ]:
-                df[text_col] = (
-                    df[text_col]
-                    .astype(str)
-                    .str.replace(r"\.0$", "", regex=True)
-                    .str.strip()
-                )
-
-            # ---------------------------------------------------------
-            # IMPORTANT:
-            # Convert ALL Worldline amount fields to NUMBERS
-            # ---------------------------------------------------------
-            for amount_col in [
-                "Total_Amount",
-                "Charges",
-                "Taxes",
-                "Net_Amount",
-            ]:
-                df[amount_col] = to_numeric_series_cleanup(
-                    df[amount_col]
-                )
-
-            # ---------------------------------------------------------
-            # Final Worldline structure
-            # ---------------------------------------------------------
-            df = df[required_cols]
-
+            if "Bank_Transaction_id" in df.columns:
+             df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
         except Exception:
             pass
-
-
-
-
-
-
-
-
-
 
 
 
