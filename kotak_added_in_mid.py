@@ -753,12 +753,12 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     # =========================
     # elif key == "worldline_nb":
     #     try:
-    #     # 🔥 Treat IDs as TEXT
-    #         if "SM Transaction Id" in df.columns:
-    #          df["SM Transaction Id"] = df["SM Transaction Id"].astype(str).str.replace(r"\.0$", "", regex=True)
+        # 🔥 Treat IDs as TEXT
+            # if "SM Transaction Id" in df.columns:
+            #  df["SM Transaction Id"] = df["SM Transaction Id"].astype(str).str.replace(r"\.0$", "", regex=True)
 
-    #         if "Bank_Transaction_id" in df.columns:
-    #          df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
+            # if "Bank_Transaction_id" in df.columns:
+            #  df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
     #     except Exception:
     #         pass
 
@@ -776,123 +776,133 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     # =========================
     elif key == "worldline_nb":
         try:
-
-         df = find_header_row_and_reframe(
-            df,
-            ["Net Amount", "Charges", "Bank Transaction id"]
-        )
-         
-         # df = find_worldline_header_and_reframe(df)
-
-        # 🔥 Normalize columns
-         col_map = {}
-         for col in df.columns:
-            norm = normalize_col_name(col)
-
-            if "srno." in norm:
-                col_map[col] = "SR_No."
-            elif "bankid" in norm:
-                col_map[col] = "Bank_Id"
-            elif "bankname" in norm:
-                col_map[col] = "Bank_Name"
+            
+            
+            
+            expected_headers = [
+                "SR No.",
+    "Bank Id",
+    "Bank Name",
+    "TPSL Transaction id",
+    "Sm Transaction Id",
+    "Bank Transaction id",
+    "Total Amount",
+    "Charges",
+    "Taxes",
+    "Net Amount",
+    "Transaction date",
+    "Transaction time",
+    "Payment Date",
+    "SRC ITC",
+    "Payment Mode",
+]
+            
+            header_row_index = None
+            
+            # Search row by row
+            
+            for r in range(len(df)):
+                
+                row_values = (
+                    df.iloc[r]
+                    .astype(str)
+                    .str.strip()
+                    .tolist()
+                    )
                 
                 
-            elif "tpsltransactionid" in norm:
-                col_map[col] = "TPSL_Transaction_id"
-            elif norm == "smtransactionid":
-                col_map[col] = "SM_Transaction_Id"
-                
-                
-            elif "banktransactionid" in norm:
-                col_map[col] = "Bank_Transaction_id"
-            elif norm == "totalamount":
-                col_map[col] = "Total_Amount"
-                
-                
-            elif "charges" in norm:
-                col_map[col] = "Charges"
-            elif norm == "taxes":
-                col_map[col] = "Taxes"
-                
-            elif "netamount" in norm:
-                col_map[col] = "Net_Amount"
-            elif norm == "transactiondate":
-                col_map[col] = "Transaction_date"
+                if row_values[:len(expected_headers)] == expected_headers:
+                    header_row_index = r
+                    break
                 
                 
                 
                 
-            elif "transactiontime" in norm:
-                col_map[col] = "Transaction_time"
-            elif norm == "paymentdate":
-                col_map[col] = "Payment_Date"
+            
+            
+            
+            
+            
+            if header_row_index is None:
                 
-            elif "srcitc" in norm:
-                col_map[col] = "SRC_ITC"
-            elif norm == "paymentmode":
-                col_map[col] = "Payment_Mode"
+                expected_norm = [
+                    str(x).strip().lower()
+                    for x in expected_headers
+                    ]
                 
                 
+                for r in range(len(df)):
+                    
+                    row_values = [
+                        str(x).strip().lower()
+                        for x in df.iloc[r].tolist()
+                        ]
+                    
+                    
+                    if all(
+                            h in row_values
+                            for h in expected_norm
+                            ):
+                        
+                        header_row_index = r
+                        break
+                    
+                    
+                    
+                if header_row_index is not None:
+                    
+                    header = [
+                        str(x).strip()
+                        for x in df.iloc[header_row_index].tolist()
+                        ]
+                    
+                    
+                    df = df.iloc[
+                        header_row_index + 1:
+                            ].copy().reset_index(drop=True)
+                        
+                        
+                    df.columns = header[:df.shape[1]]
+                    
+                    
+                    
+                    
+                    
+                df = df.dropna(
+                        how="all"
+                        ).reset_index(drop=True)
+            
+            
+            
+            if "Sm Transaction Id" in df.columns:
+             df["Sm Transaction Id"] = df["Sm Transaction Id"].astype(str).str.replace(r"\.0$", "", regex=True)
 
-         df = df.rename(columns=col_map)
-         
-         
-         
-         
-
-
-        # 🔥 Ensure required columns exist
-         required_cols = [
-            "SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "SM_Transaction_Id", "Bank_Transaction_id",
-            "Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
-        ]
-
-         for col in required_cols:
-            if col not in df.columns:
-                df[col] = ""
-
-        # 🔥 FIX 1: Treat as TEXT (no scientific / no .0)
-         if "SM_Transaction_Id" in df.columns:
-            df["SM_Transaction_Id"] = df["SM_Transaction_Id"].astype(str).str.replace(r"\.0$", "", regex=True)
-
-         if "Bank_Transaction_id" in df.columns:
-            df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
-
-
-        # 🔥 Add MPR_Date
-         df["MPR_Date"] = MPR_DATE
-
-        # 🔥 Final column order
-         df = df[[
-"SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "SM_Transaction_Id", "Bank_Transaction_id",
-"Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
-        ]]
-         
-         
-         
-         
-        # =========================================================
-        # FIX: WORLDLINE SUMMARY TOTAL
-        # Explicitly convert Net_Amount to numeric and use it
-        # for summary calculation.
-        # =========================================================
-        
-        # Worldline Net Amount must be numeric for summary calculation
-
-         
-         df["Net_Amount"] = pd.to_numeric(
-             df["Net_Amount"]
-             .astype(str)
-             .str.replace(",", "", regex=False)
-             .str.strip(),
-             errors="coerce"
-             )
-         
-         df.attrs["_calc_df"] = pd.DataFrame({"Net_Amount": df["Net_Amount"].values})
-        
-        
-
-        
+            if "Bank Transaction id" in df.columns:
+             df["Bank Transaction id"] = df["Bank Transaction id"].astype(str).str.replace(r"\.0$", "", regex=True)
+             
+             
+             for col in [
+                     "Total Amount",
+            "Charges",
+            "Taxes",
+            "Net Amount",
+            ]:
+                 
+                 if col in df.columns:
+                     df[col] = pd.to_numeric(
+                         df[col]
+                   .astype(str)
+                   .str.replace(",", "", regex=False)
+                   .str.strip(),
+                   errors="coerce"
+                   )
+                     
+                     
+                     
+            df["MPR_Date"] = MPR_DATE
+             
+             
+             
          
         except Exception:
             pass
