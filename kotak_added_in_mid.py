@@ -909,6 +909,19 @@ def find_vendor_files(zip_names, vendor_name, vendor_key):
     for name in zip_names:
         if name.endswith("/"):
             continue
+        
+        
+    # =========================================================
+    # WORLDLINE ONLY
+    # Ignore Excel temporary / lock files
+    # Example: ~$Book4.xlsx
+    # =========================================================
+    
+        if vendor_key == "worldline_nb":
+            if os.path.basename(name).startswith("~$"):
+                continue
+            
+        
 
         normalized_full = normalize_path_name(name)
         path_parts = [normalize_path_name(part) for part in name.split("/")]
@@ -920,6 +933,13 @@ def find_vendor_files(zip_names, vendor_name, vendor_key):
             for tok in aliases
         ):
             matches.append(name)
+
+
+        
+
+
+
+
 
     # remove duplicates while preserving order
     seen = set()
@@ -1155,7 +1175,7 @@ EXACT_OUTPUT_SCHEMAS = {
         "MPR_Date", "SR_No", "Bank_Id", "Bank_Name", "TPSL_Transaction_id",
         "SM_Transaction_Id", "Bank_Transaction_id", "Total_Amount", "Charges",
         "Taxes", "Net_Amount", "Transaction_Date", "Transaction_Time",
-        "Payment_Date", "SRC_ITC", "Merchant_ID", "Payment_Mode"
+        "Payment_Date", "SRC_ITC","Payment_Mode"
     ],
     "13icicicards": [
         "MPR_Date", "Legal_name", "Card_Acceptor_Identification_Code",
