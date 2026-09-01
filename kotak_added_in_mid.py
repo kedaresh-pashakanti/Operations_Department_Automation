@@ -2147,6 +2147,18 @@ def build_sql_style_report(excel_data, selected_mpr_date):
                     dfx,
                     credit_col
                 )
+                
+                debit_col = _match_col(
+                    dfx,
+                    "Debit"
+                    )
+                
+                debit = _series_num(
+                    dfx,
+                    debit_col
+                    )
+                
+                
 
                 # -------------------------------------------------
                 # MSFAndCharges = Fee + Tax
@@ -2178,6 +2190,52 @@ def build_sql_style_report(excel_data, selected_mpr_date):
                     .astype(str)
                     .str.strip()
                 )
+                
+                
+                
+                
+                
+                
+                cr_amount = credit.copy()
+                
+                non_pay_mask = type_values.str.upper().ne("PAY")
+                
+                credit_zero_or_blank = (
+                    credit.isna()
+                    | credit.eq(0)
+                    )
+                
+                cr_amount.loc[
+                    non_pay_mask & credit_zero_or_blank
+                    
+                    ] = debit.loc[
+                        
+                        non_pay_mask & credit_zero_or_blank
+                        ]
+                        
+                        
+                        
+                        
+                
+# =========================================================
+# CR_Amount LOGIC
+#
+# PAY:
+#     Credit
+#
+# NON-PAY:
+#     Credit if Credit != 0
+#     otherwise Debit
+# =========================================================
+
+
+
+                
+                
+                
+                
+                
+                
 
                 sp_name_series = type_values.apply(
                     lambda x:
@@ -2204,7 +2262,7 @@ def build_sql_style_report(excel_data, selected_mpr_date):
                         ),
                         "Gross_Amt": gross.round(2),
                         "MSFAndCharges": msfchg.round(2),
-                        "CR_Amount": credit.round(2),
+                        "CR_Amount": cr_amount.round(2),
                         "SP_Name": sp_name_series.values,
                     })
                 )
