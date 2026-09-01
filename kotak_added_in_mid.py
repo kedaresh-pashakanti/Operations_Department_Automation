@@ -1622,6 +1622,8 @@ SQL_STYLE_REPORT_COLUMNS = [
     "MSFAndCharges",
     "CR_Amount",
     "SP_Name",
+    "Type",
+    "Cr/Dr",
 ]
 
 SQL_SP_LABELS = {
@@ -2264,6 +2266,25 @@ def build_sql_style_report(excel_data, selected_mpr_date):
                         "MSFAndCharges": msfchg.round(2),
                         "CR_Amount": cr_amount.round(2),
                         "SP_Name": sp_name_series.values,
+                        
+                        
+                        
+                        # Temporary internal column.
+                        # It will be converted to final Cr/Dr at the end
+                        # and then removed.
+                        
+                        "_Kotak_CrDr": (
+                            (
+                                non_pay_mask & credit_zero_or_blank
+                                )
+                            
+                            .map({
+                                True: "D",
+                                False: "C"
+                                })
+                            .values
+                            ),
+                        
                     })
                 )
 
@@ -2306,8 +2327,162 @@ def build_sql_style_report(excel_data, selected_mpr_date):
     if not out_frames:
         return pd.DataFrame(columns=SQL_STYLE_REPORT_COLUMNS), None
 
-    report_df = pd.concat(out_frames, ignore_index=True, sort=False)
-    report_df = report_df.reindex(columns=SQL_STYLE_REPORT_COLUMNS)
+    # report_df = pd.concat(out_frames, ignore_index=True, sort=False)
+    # report_df = report_df.reindex(columns=SQL_STYLE_REPORT_COLUMNS)
+    
+    
+    report_df = pd.concat(    out_frames,    ignore_index=True,    sort=False)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+# =========================================================
+# FINAL SQL REPORT LOGIC
+# Create Type and Cr/Dr ONLY HERE.
+#
+# Existing vendor calculations remain untouched.
+# =========================================================
+
+# ---------------------------------------------------------
+# TYPE
+#
+# ATOM:
+#     5-Atom NB              -> Sale
+#     5-Atom NB - Refund     -> Refund
+#
+# KOTAK JUSPAY:
+#     25-KotakJusPay UPI             -> Sale
+#     25-KotakJusPay UPI - REFUND    -> REFUND
+#     25-KotakJusPay UPI - XXXXX     -> XXXXX
+#
+# All other vendors -> Sale
+# ---------------------------------------------------------
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    report_df["Type"] = "Sale"
+    
+    sp_text = (
+        report_df["SP_Name"]
+        .fillna("")
+        .astype(str)
+        .str.strip()
+        )
+    
+    # ATOM refund
+    atom_refund_mask = sp_text.eq(
+        "5-Atom NB - Refund"
+        )
+    
+    report_df.loc[
+        atom_refund_mask,
+        "Type"
+        ] = "Refund"
+    
+    
+    
+    # KotakJusPay non-PAY
+    kotak_prefix = "25-KotakJusPay UPI - "
+    
+    
+    
+    kotak_non_pay_mask = sp_text.str.startswith(
+        kotak_prefix,
+        na=False
+        )
+    
+    report_df.loc[
+        kotak_non_pay_mask,
+        "Type"
+        ] = (
+            sp_text.loc[kotak_non_pay_mask]
+            .str.replace(
+                kotak_prefix,
+                "",
+                regex=False
+                )
+            
+            .str.strip()
+            )
+            
+            
+      
+# ---------------------------------------------------------
+# Cr/Dr
+#
+# Default for EVERY vendor = C
+# ---------------------------------------------------------
+            
+            
+            
+    
+            
+            
+            
+            
+            
+    report_df["Cr/Dr"] = "C"
+    
+    # Only KotakJusPay can have Debit.
+    if "_Kotak_CrDr" in report_df.columns:
+        
+        kotak_rows = report_df["_Kotak_CrDr"].notna()
+        
+        report_df.loc[
+            kotak_rows,
+            "Cr/Dr"
+            ] = report_df.loc[
+                kotak_rows,
+                "_Kotak_CrDr"
+                ]
+                
+                
+        # Remove temporary internal column
+        
+        report_df = report_df.drop(
+            columns=["_Kotak_CrDr"],
+            errors="ignore"
+            )
+        
+        
+        
+        # Final SQL column order
+        report_df = report_df.reindex(
+            columns=SQL_STYLE_REPORT_COLUMNS
+            )
+        
+        
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     # 🔥 FINAL FIX (SAFE VERSION)
     if "1Pay_Transaction_ID" in report_df.columns:
      col = report_df["1Pay_Transaction_ID"]
