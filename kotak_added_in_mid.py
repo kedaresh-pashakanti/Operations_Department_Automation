@@ -921,6 +921,10 @@ def find_vendor_files(zip_names, vendor_name, vendor_key):
             if os.path.basename(name).startswith("~$"):
                 continue
             
+        if vendor_key == "yes_nb":
+            if os.path.basename(name).startswith("~$"):
+                continue
+            
         
 
         normalized_full = normalize_path_name(name)
