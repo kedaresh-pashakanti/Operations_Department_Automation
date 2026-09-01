@@ -779,7 +779,7 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
 
          df = find_header_row_and_reframe(
             df,
-            ["Net Amount", "Charges", "Bank Bank Transaction id"]
+            ["Net Amount", "Charges", "Bank Transaction id"]
         )
          
          # df = find_worldline_header_and_reframe(df)
@@ -878,11 +878,20 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
         # =========================================================
         
         # Worldline Net Amount must be numeric for summary calculation
-         df["Net_Amount"] = to_numeric_series_cleanup(df["Net_Amount"])
+
+         
+         df["Net_Amount"] = pd.to_numeric(
+             df["Net_Amount"]
+             .astype(str)
+             .str.replace(",", "", regex=False)
+             .str.strip(),
+             errors="coerce"
+             )
+         
+         df.attrs["_calc_df"] = pd.DataFrame({"Net_Amount": df["Net_Amount"].values})
         
         
-        # Explicit calculation dataframe for Worldline
-         df.attrs["_calc_df"] = df[["Net_Amount"]].copy()
+
         
          
         except Exception:
