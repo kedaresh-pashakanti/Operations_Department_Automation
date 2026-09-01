@@ -751,16 +751,175 @@ def preprocess_for_vendor(df, key, file_bytes=None, filename=None):
     # =========================
     # WORLDLINE NB
     # =========================
+    # elif key == "worldline_nb":
+    #     try:
+    #     # 🔥 Treat IDs as TEXT
+    #         if "SM Transaction Id" in df.columns:
+    #          df["SM Transaction Id"] = df["SM Transaction Id"].astype(str).str.replace(r"\.0$", "", regex=True)
+
+    #         if "Bank_Transaction_id" in df.columns:
+    #          df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
+    #     except Exception:
+    #         pass
+
+
+
+
+
+
+
+
+
+
+    # =========================
+    # WORLDLINE NB
+    # =========================
     elif key == "worldline_nb":
         try:
-        # 🔥 Treat IDs as TEXT
-            if "SM Transaction Id" in df.columns:
-             df["SM Transaction Id"] = df["SM Transaction Id"].astype(str).str.replace(r"\.0$", "", regex=True)
 
-            if "Bank_Transaction_id" in df.columns:
-             df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
+         df = find_header_row_and_reframe(
+            df,
+            ["Net Amount", "Charges", "Bank Bank Transaction id"]
+        )
+
+        # 🔥 Normalize columns
+         col_map = {}
+         for col in df.columns:
+            norm = normalize_col_name(col)
+
+            if "srno." in norm:
+                col_map[col] = "SR_No."
+            elif "bankid" in norm:
+                col_map[col] = "Bank_Id"
+            elif "bankname" in norm:
+                col_map[col] = "Bank_Name"
+                
+                
+            elif "tpsltransactionid" in norm:
+                col_map[col] = "TPSL_Transaction_id"
+            elif norm == "smtransactionid":
+                col_map[col] = "SM_Transaction_Id"
+                
+                
+            elif "banktransactionid" in norm:
+                col_map[col] = "Bank_Transaction_id"
+            elif norm == "totalamount":
+                col_map[col] = "Total_Amount"
+                
+                
+            elif "charges" in norm:
+                col_map[col] = "Charges"
+            elif norm == "taxes":
+                col_map[col] = "Taxes"
+                
+            elif "netamount" in norm:
+                col_map[col] = "Net_Amount"
+            elif norm == "transactiondate":
+                col_map[col] = "Transaction_date"
+                
+                
+                
+                
+            elif "transactiontime" in norm:
+                col_map[col] = "Transaction_time"
+            elif norm == "paymentdate":
+                col_map[col] = "Payment_Date"
+                
+            elif "srcitc" in norm:
+                col_map[col] = "SRC_ITC"
+            elif norm == "paymentmode":
+                col_map[col] = "Payment_Mode"
+                
+                
+
+         df = df.rename(columns=col_map)
+         
+         
+         
+         
+
+
+        # 🔥 Ensure required columns exist
+         required_cols = [
+            "SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "Sm_Transaction_Id", "SM_Transaction_Id", "Bank_Transaction_id",
+            "Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
+        ]
+
+         for col in required_cols:
+            if col not in df.columns:
+                df[col] = ""
+
+        # 🔥 FIX 1: Treat as TEXT (no scientific / no .0)
+         if "SM_Transaction_Id" in df.columns:
+            df["SM_Transaction_Id"] = df["SM_Transaction_Id"].astype(str).str.replace(r"\.0$", "", regex=True)
+
+         if "Bank_Transaction_id" in df.columns:
+            df["Bank_Transaction_id"] = df["Bank_Transaction_id"].astype(str).str.replace(r"\.0$", "", regex=True)
+
+
+        # 🔥 Add MPR_Date
+         df["MPR_Date"] = MPR_DATE
+
+        # 🔥 Final column order
+         df = df[[
+"SR_No.","Bank_Id", "Bank_Name", "TPSL_Transaction_id", "SM_Transaction_Id", "Bank_Transaction_id",
+"Total_Amount", "Charges","Taxes", "Net_Amount", "Transaction_date", "Transaction_time", "Transaction_time", "Payment_Date","SRC_ITC", "Payment_Mode"
+        ]]
+         
+         
+         
         except Exception:
             pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
