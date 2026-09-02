@@ -2436,6 +2436,22 @@ def build_sql_style_report(excel_data, selected_mpr_date):
             
     report_df["Cr/Dr"] = "C"
     
+    
+    
+    # ---------------------------------------------------------
+    # ATOM REFUND = D
+    # ---------------------------------------------------------
+    report_df.loc[
+        atom_refund_mask,
+        "Cr/Dr"
+        ] = "D"
+
+    
+    
+    
+    
+    
+    
     # Only KotakJusPay can have Debit.
     if "_Kotak_CrDr" in report_df.columns:
         
@@ -2466,6 +2482,10 @@ def build_sql_style_report(excel_data, selected_mpr_date):
         
         
 
+    
+    # ---------------------------------------------------------
+    # ATOM REFUND = D
+    # ---------------------------------------------------------
     
     
     
