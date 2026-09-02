@@ -2466,6 +2466,62 @@ def build_sql_style_report(excel_data, selected_mpr_date):
                 ]
                 
                 
+                
+                
+                
+                
+                
+                
+                # =========================================================
+                # KOTAK JUSPAY - RE-PRESENTMENT RAISE
+                # =========================================================
+                
+                
+                
+                
+                
+        kotak_representment_mask = (
+            report_df["SP_Name"]
+            .fillna("")
+            .astype(str)
+            .str.contains("KotakJusPay", case=False, na=False)
+            &
+            
+            report_df["Type"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .eq("Re-presentment Raise")
+            )
+        
+        
+        report_df.loc[
+            kotak_representment_mask,
+            "Gross_Amt"
+        ] = (
+            -report_df.loc[
+                kotak_representment_mask,
+                "Gross_Amt"
+            ].abs()
+            )
+            
+            
+        report_df.loc[
+            kotak_representment_mask,
+            "CR_Amount"
+        ] = (
+            -report_df.loc[
+                kotak_representment_mask,
+                "CR_Amount"
+            ].abs()
+            )
+
+
+
+
+
+
+                
         # Remove temporary internal column
         
         report_df = report_df.drop(
