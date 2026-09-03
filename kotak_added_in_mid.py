@@ -2561,7 +2561,7 @@ def build_sql_style_report(excel_data, selected_mpr_date):
         report_df.loc[
             kotak_representment_mask,
             "Type"
-            ] = "Re-presentment Raise"
+            ] = "Chargeback"
         
         
         
