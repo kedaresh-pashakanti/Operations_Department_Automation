@@ -2466,27 +2466,91 @@ def build_sql_style_report(excel_data, selected_mpr_date):
                 ]
                 
                 
+# =========================================================
+# FINAL SP_NAME / TYPE REWRITE
+# =========================================================
+
+# ---------------------------------------------------------
+# 1. ATOM REFUND
+#
+# 5-Atom NB - Refund
+#       ↓
+# 5-Atom NB
+# ---------------------------------------------------------
                 
-                
-                
-                
-                
-                
-                # =========================================================
-                # KOTAK JUSPAY - RE-PRESENTMENT RAISE
-                # =========================================================
-                
-                
-                
-                
-                
-        kotak_representment_mask = (
+        report_df.loc[
+            atom_refund_mask,
+            "SP_Name"
+            ] = "5-Atom NB"
+        
+        
+# ---------------------------------------------------------
+# 2. KOTAK JUSPAY
+#
+# All KotakJusPay rows:
+#
+# 25-KotakJusPay UPI - Chargeback Raise
+#       ↓
+# 25-KotakJusPay UPI
+#
+# 25-KotakJusPay UPI - Re-presentment Raise
+#       ↓
+# 25-KotakJusPay UPI
+#
+# 25-KotakJusPay UPI - Credit Adjustment
+#       ↓
+# 25-KotakJusPay UPI
+# ---------------------------------------------------------  
+        
+        kotak_sp_mask = (
             report_df["SP_Name"]
             .fillna("")
             .astype(str)
-            .str.contains("KotakJusPay", case=False, na=False)
+            .str.startswith(
+                "25-KotakJusPay UPI",
+                na=False
+                )
+            )
+        
+        report_df.loc[
+            kotak_sp_mask,
+            "SP_Name"
+            ] = "25-KotakJusPay UPI"
+        
+        
+        
+# =========================================================
+# KOTAK TYPE REWRITE
+# =========================================================
+
+# ---------------------------------------------------------
+# Chargeback Raise → Chargeback
+# ---------------------------------------------------------
+        
+        kotak_chargeback_mask = (
+            kotak_sp_mask
             &
-            
+            report_df["Type"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .eq("Chargeback Raise")
+            )
+        
+        report_df.loc[
+            kotak_chargeback_mask,
+            "Type"
+            ] = "Chargeback"
+        
+# ---------------------------------------------------------
+# Re-presentment Raise
+# Keep Type exactly:
+#     Re-presentment Raise
+# ---------------------------------------------------------
+        
+        kotak_representment_mask = (
+            kotak_sp_mask
+            &
             report_df["Type"]
             .fillna("")
             .astype(str)
@@ -2494,31 +2558,66 @@ def build_sql_style_report(excel_data, selected_mpr_date):
             .eq("Re-presentment Raise")
             )
         
+        report_df.loc[
+            kotak_representment_mask,
+            "Type"
+            ] = "Re-presentment Raise"
+        
+        
+        
+# ---------------------------------------------------------
+# Credit Adjustment → Refund
+# ---------------------------------------------------------
+        
+        kotak_credit_adjustment_mask = (
+            kotak_sp_mask
+            &
+            report_df["Type"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+            .eq("Credit Adjustment")
+            )
+        
+        report_df.loc[
+            kotak_credit_adjustment_mask,
+            "Type"
+            ] = "Refund"
+        
+        
+# =========================================================
+# KOTAK JUSPAY - RE-PRESENTMENT RAISE
+#
+# Only this case:
+#     Gross_Amt  -> negative
+#     CR_Amount  -> negative
+#
+# MSFAndCharges stays unchanged.
+# =========================================================
+        
+        
         
         report_df.loc[
             kotak_representment_mask,
             "Gross_Amt"
-        ] = (
-            -report_df.loc[
-                kotak_representment_mask,
-                "Gross_Amt"
-            ].abs()
-            )
-            
-            
+            ] = (
+                -report_df.loc[
+                    kotak_representment_mask,
+                    "Gross_Amt"
+                    ].abs()
+                )
+                
         report_df.loc[
             kotak_representment_mask,
             "CR_Amount"
-        ] = (
-            -report_df.loc[
-                kotak_representment_mask,
-                "CR_Amount"
-            ].abs()
-            )
-
-
-
-
+            ] = (
+                -report_df.loc[
+                    kotak_representment_mask,
+                    "CR_Amount"
+                    ].abs()
+                )
+                
+                
 
 
                 
@@ -2538,10 +2637,429 @@ def build_sql_style_report(excel_data, selected_mpr_date):
         
         
 
+ 
     
-    # ---------------------------------------------------------
-    # ATOM REFUND = D
-    # ---------------------------------------------------------
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    #actuall working in condition
+# # =========================================================
+# # FINAL SQL REPORT LOGIC
+# # Create Type and Cr/Dr ONLY HERE.
+# #
+# # Existing vendor calculations remain untouched.
+# # =========================================================
+
+# # ---------------------------------------------------------
+# # TYPE
+# #
+# # ATOM:
+# #     5-Atom NB              -> Sale
+# #     5-Atom NB - Refund     -> Refund
+# #
+# # KOTAK JUSPAY:
+# #     25-KotakJusPay UPI             -> Sale
+# #     25-KotakJusPay UPI - REFUND    -> REFUND
+# #     25-KotakJusPay UPI - XXXXX     -> XXXXX
+# #
+# # All other vendors -> Sale
+# # ---------------------------------------------------------
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+#     report_df["Type"] = "Sale"
+    
+#     sp_text = (
+#         report_df["SP_Name"]
+#         .fillna("")
+#         .astype(str)
+#         .str.strip()
+#         )
+    
+#     # ATOM refund
+#     atom_refund_mask = sp_text.eq(
+#         "5-Atom NB - Refund"
+#         )
+    
+#     report_df.loc[
+#         atom_refund_mask,
+#         "Type"
+#         ] = "Refund"
+    
+    
+    
+#     # KotakJusPay non-PAY
+#     kotak_prefix = "25-KotakJusPay UPI - "
+    
+    
+    
+#     kotak_non_pay_mask = sp_text.str.startswith(
+#         kotak_prefix,
+#         na=False
+#         )
+    
+#     report_df.loc[
+#         kotak_non_pay_mask,
+#         "Type"
+#         ] = (
+#             sp_text.loc[kotak_non_pay_mask]
+#             .str.replace(
+#                 kotak_prefix,
+#                 "",
+#                 regex=False
+#                 )
+            
+#             .str.strip()
+#             )
+            
+            
+      
+# # ---------------------------------------------------------
+# # Cr/Dr
+# #
+# # Default for EVERY vendor = C
+# # ---------------------------------------------------------
+            
+            
+            
+    
+            
+            
+            
+            
+            
+#     report_df["Cr/Dr"] = "C"
+    
+    
+    
+#     # ---------------------------------------------------------
+#     # ATOM REFUND = D
+#     # ---------------------------------------------------------
+#     report_df.loc[
+#         atom_refund_mask,
+#         "Cr/Dr"
+#         ] = "D"
+
+    
+    
+    
+    
+    
+    
+#     # Only KotakJusPay can have Debit.
+#     if "_Kotak_CrDr" in report_df.columns:
+        
+#         kotak_rows = report_df["_Kotak_CrDr"].notna()
+        
+#         report_df.loc[
+#             kotak_rows,
+#             "Cr/Dr"
+#             ] = report_df.loc[
+#                 kotak_rows,
+#                 "_Kotak_CrDr"
+#                 ]
+                
+                
+                
+                
+                
+                
+                
+                
+#                 # =========================================================
+#                 # KOTAK JUSPAY - RE-PRESENTMENT RAISE
+#                 # =========================================================
+                
+                
+                
+                
+                
+#         kotak_representment_mask = (
+#             report_df["SP_Name"]
+#             .fillna("")
+#             .astype(str)
+#             .str.contains("KotakJusPay", case=False, na=False)
+#             &
+            
+#             report_df["Type"]
+#             .fillna("")
+#             .astype(str)
+#             .str.strip()
+#             .eq("Re-presentment Raise")
+#             )
+        
+        
+#         report_df.loc[
+#             kotak_representment_mask,
+#             "Gross_Amt"
+#         ] = (
+#             -report_df.loc[
+#                 kotak_representment_mask,
+#                 "Gross_Amt"
+#             ].abs()
+#             )
+            
+            
+#         report_df.loc[
+#             kotak_representment_mask,
+#             "CR_Amount"
+#         ] = (
+#             -report_df.loc[
+#                 kotak_representment_mask,
+#                 "CR_Amount"
+#             ].abs()
+#             )
+
+
+
+
+
+
+                
+#         # Remove temporary internal column
+        
+#         report_df = report_df.drop(
+#             columns=["_Kotak_CrDr"],
+#             errors="ignore"
+#             )
+        
+        
+        
+#         # Final SQL column order
+#         report_df = report_df.reindex(
+#             columns=SQL_STYLE_REPORT_COLUMNS
+#             )
+        
+        
+
+ 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
