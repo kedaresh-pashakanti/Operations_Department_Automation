@@ -3679,7 +3679,7 @@ def build_hdfc_escrow_final_workbook(
 # HDFC ESCROW - PHASE 2 INPUT FILES
 # =========================================================
 
-st.header("📥 HDFC ESCROW Files")
+st.header("HDFC ESCROW Files")
 
 workbook_upload = st.file_uploader(
     "1. Upload Workbook File",
