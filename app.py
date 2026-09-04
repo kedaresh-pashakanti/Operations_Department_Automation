@@ -112,17 +112,10 @@
 
 
 
-
-
-
-
-
-
-
+import streamlit as st
+import runpy
 import os
 import sys
-import runpy
-import streamlit as st
 
 
 # =========================================================
@@ -133,12 +126,9 @@ BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
 )
 
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
 
 # =========================================================
-# FILE PATHS
+# APPLICATION FILES
 # =========================================================
 
 APP_FILE = os.path.join(
@@ -158,7 +148,24 @@ CROSSCHECK_FILE = os.path.join(
 
 
 # =========================================================
-# MAIN APP
+# MAKE PROJECT DIRECTORY AVAILABLE FOR IMPORTS
+# =========================================================
+#
+# This is important because:
+#
+# kotak_added_in_mid_added_workbook.py
+# imports:
+#
+#     from New_HDFC import ...
+#
+# =========================================================
+
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+
+# =========================================================
+# MAIN APP CONFIG
 # =========================================================
 
 st.set_page_config(
@@ -168,6 +175,10 @@ st.set_page_config(
 
 st.title("Ops Automation")
 
+
+# =========================================================
+# PROCESS SELECTOR
+# =========================================================
 
 option = st.selectbox(
     "Select your process",
@@ -180,19 +191,37 @@ option = st.selectbox(
 
 
 # =========================================================
-# RUN CHILD APPLICATION
+# RUN CHILD STREAMLIT SCRIPT
 # =========================================================
 
 def run_child_script(file_path):
+    """
+    Execute a child Streamlit application.
 
-    if not os.path.isfile(file_path):
+    The child application's st.set_page_config()
+    is temporarily disabled because the parent app
+    has already configured the Streamlit page.
+    """
+
+    # -----------------------------------------------------
+    # Validate file exists
+    # -----------------------------------------------------
+
+    if not os.path.exists(file_path):
         st.error(
-            f"File not found:\n{file_path}"
+            f"Application file not found:\n{file_path}"
         )
         return
 
     # -----------------------------------------------------
-    # Disable child page configuration
+    # Keep project directory available for imports
+    # -----------------------------------------------------
+
+    if BASE_DIR not in sys.path:
+        sys.path.insert(0, BASE_DIR)
+
+    # -----------------------------------------------------
+    # Temporarily disable child page config
     # -----------------------------------------------------
 
     original_set_page_config = st.set_page_config
@@ -203,14 +232,15 @@ def run_child_script(file_path):
             lambda *args, **kwargs: None
         )
 
-        # -------------------------------------------------
-        # IMPORTANT:
-        # Run the child file
-        # -------------------------------------------------
-
         runpy.run_path(
             file_path,
             run_name="__main__"
+        )
+
+    except Exception as e:
+
+        st.error(
+            f"Failed to run application:\n{e}"
         )
 
     finally:
@@ -221,7 +251,7 @@ def run_child_script(file_path):
 
 
 # =========================================================
-# ROUTING
+# PROCESS ROUTING
 # =========================================================
 
 if option == "Statement Processor":
@@ -230,182 +260,19 @@ if option == "Statement Processor":
         APP_FILE
     )
 
+
 elif option == "HDFC ESCROW MID MAPPING":
 
     run_child_script(
         HDFC_FILE
     )
 
+
 elif option == "SP Cross Check":
 
     run_child_script(
         CROSSCHECK_FILE
     )
-
-
-
-
-# import streamlit as st
-# import runpy
-# import os
-# import sys
-
-
-# # =========================================================
-# # BASE DIRECTORY
-# # =========================================================
-
-# BASE_DIR = os.path.dirname(
-#     os.path.abspath(__file__)
-# )
-
-
-# # =========================================================
-# # APPLICATION FILES
-# # =========================================================
-
-# APP_FILE = os.path.join(
-#     BASE_DIR,
-#     "1.py"
-# )
-
-# HDFC_FILE = os.path.join(
-#     BASE_DIR,
-#     "New_HDFC.py"
-# )
-
-# CROSSCHECK_FILE = os.path.join(
-#     BASE_DIR,
-#     "kotak_added_in_mid_added_workbook.py"
-# )
-
-
-# # =========================================================
-# # MAKE PROJECT DIRECTORY AVAILABLE FOR IMPORTS
-# # =========================================================
-# #
-# # This is important because:
-# #
-# # kotak_added_in_mid_added_workbook.py
-# # imports:
-# #
-# #     from New_HDFC import ...
-# #
-# # =========================================================
-
-# if BASE_DIR not in sys.path:
-#     sys.path.insert(0, BASE_DIR)
-
-
-# # =========================================================
-# # MAIN APP CONFIG
-# # =========================================================
-
-# st.set_page_config(
-#     page_title="Ops Automation",
-#     layout="wide"
-# )
-
-# st.title("Ops Automation")
-
-
-# # =========================================================
-# # PROCESS SELECTOR
-# # =========================================================
-
-# option = st.selectbox(
-#     "Select your process",
-#     [
-#         "Statement Processor",
-#         "HDFC ESCROW MID MAPPING",
-#         "SP Cross Check",
-#     ]
-# )
-
-
-# # =========================================================
-# # RUN CHILD STREAMLIT SCRIPT
-# # =========================================================
-
-# def run_child_script(file_path):
-#     """
-#     Execute a child Streamlit application.
-
-#     The child application's st.set_page_config()
-#     is temporarily disabled because the parent app
-#     has already configured the Streamlit page.
-#     """
-
-#     # -----------------------------------------------------
-#     # Validate file exists
-#     # -----------------------------------------------------
-
-#     if not os.path.exists(file_path):
-#         st.error(
-#             f"Application file not found:\n{file_path}"
-#         )
-#         return
-
-#     # -----------------------------------------------------
-#     # Keep project directory available for imports
-#     # -----------------------------------------------------
-
-#     if BASE_DIR not in sys.path:
-#         sys.path.insert(0, BASE_DIR)
-
-#     # -----------------------------------------------------
-#     # Temporarily disable child page config
-#     # -----------------------------------------------------
-
-#     original_set_page_config = st.set_page_config
-
-#     try:
-
-#         st.set_page_config = (
-#             lambda *args, **kwargs: None
-#         )
-
-#         runpy.run_path(
-#             file_path,
-#             run_name="__main__"
-#         )
-
-#     except Exception as e:
-
-#         st.error(
-#             f"Failed to run application:\n{e}"
-#         )
-
-#     finally:
-
-#         st.set_page_config = (
-#             original_set_page_config
-#         )
-
-
-# # =========================================================
-# # PROCESS ROUTING
-# # =========================================================
-
-# if option == "Statement Processor":
-
-#     run_child_script(
-#         APP_FILE
-#     )
-
-
-# elif option == "HDFC ESCROW MID MAPPING":
-
-#     run_child_script(
-#         HDFC_FILE
-#     )
-
-
-# elif option == "SP Cross Check":
-
-#     run_child_script(
-#         CROSSCHECK_FILE
-#     )
 
 
 
