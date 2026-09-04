@@ -3767,19 +3767,169 @@ if summary_results:
             file_name=f"MID_Mapping_Compare_{mpr_date.strftime('%d %b %Y')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
+    
+    # =========================================================
+    # SQL STYLE REPORT
+    # =========================================================
+#     st.header("📄 SQL Style Report")
+#     sql_report_df, sql_report_error = build_sql_style_report(excel_data, mpr_date)
+
+#     if sql_report_error:
+#         st.warning(sql_report_error)
+#     else:
+        
+#         st.dataframe(sql_report_df)
+#         sql_report_xlsx = build_sql_style_report_workbook_bytes(sql_report_df)
+
+#         st.download_button(
+#             label="Download SQL Style Report",
+#             data=sql_report_xlsx,
+#             file_name=f"SQL_Style_Report_{mpr_date.strftime('%d %b %Y')}.xlsx",
+#             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#         )
+        
+        
+        
+        
+        
+#     # =========================================================
+#     # PHASE 2 - HDFC ESCROW FINAL WORKBOOK
+#     # =========================================================
+#     #
+#     # This runs ONLY after the existing vendor + SQL process
+#     # has completed successfully.
+#     #
+#     # Existing vendor logic is NOT changed.
+#     # =========================================================
+        
+        
+        
+#         hdfc_final_xlsx = None
+        
+#         if (
+                
+#                 workbook_upload is not None
+#                 and mid_ids_upload is not None
+#                 and statement_upload is not None
+#         ):
+            
+            
+#             try:
+#                 hdfc_final_xlsx = (
+#                     build_hdfc_escrow_final_workbook(
+#                         workbook_bytes=workbook_upload.getvalue(),
+#                         mid_ids_bytes=mid_ids_upload.getvalue(),
+#                         statement_bytes=statement_upload.getvalue(),
+#                         sql_report_df=sql_report_df,
+#                         )
+#                     )
+                
+#                 st.success(
+#                     "HDFC ESCROW workbook updated successfully ✅"
+#                     )
+                
+                
+                
+                
+                
+                
+#                 st.download_button(
+#                     label="📥 Download Full Final Workbook",
+#                     data=hdfc_final_xlsx,
+#                     file_name=(
+#                         f"HDFC_ESCROW_Final_"
+#                         f"{mpr_date.strftime('%d %b %Y')}.xlsx"
+#                         ),
+                    
+#                     mime=(
+#                         "application/vnd.openxmlformats-officedocument."
+#                         "spreadsheetml.sheet"
+#                         ),
+                    
+#                     key="download_full_final_workbook",
+#                     )
+                
+#             except Exception as e:
+                
+#                 st.error(
+#                     f"HDFC ESCROW workbook creation failed: {e}")
+                
+#         else:
+            
+#             st.info(
+#                 "Upload all 3 HDFC ESCROW files "
+#                 "(Workbook, MID IDs, Statement) "
+#                 "to generate the Full Final Workbook."
+#                 )
+            
+            
+
+                
+                
+                
+
+
+
+#     # 🔥 Button 1: Main Excel
+#     st.download_button(
+#         label="Download Main Excel",
+#         data=main_xlsx,
+#         file_name=f"Upload_Format- {mpr_date.strftime('%d %b %Y')}.xlsx",
+#         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#         key="download_main_excel",
+#     )
+
+#     # 🔥 Button 2: Summary Excel
+#     st.download_button(
+#         label="Download Summary Excel",
+#         data=summary_xlsx,
+#         file_name=f"Summary- {mpr_date.strftime('%d %b %Y')}.xlsx",
+#         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+#         key="download_summary_excel",
+
+#     )
+# elif zip_file:
+#     st.info("No vendor data was processed from the ZIP.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # =========================================================
     # SQL STYLE REPORT
     # =========================================================
     st.header("📄 SQL Style Report")
-    sql_report_df, sql_report_error = build_sql_style_report(excel_data, mpr_date)
+
+    sql_report_df, sql_report_error = build_sql_style_report(
+        excel_data,
+        mpr_date
+    )
 
     if sql_report_error:
         st.warning(sql_report_error)
+
     else:
-        
         st.dataframe(sql_report_df)
-        sql_report_xlsx = build_sql_style_report_workbook_bytes(sql_report_df)
+
+        sql_report_xlsx = build_sql_style_report_workbook_bytes(
+            sql_report_df
+        )
 
         st.download_button(
             label="Download SQL Style Report",
@@ -3787,106 +3937,86 @@ if summary_results:
             file_name=f"SQL_Style_Report_{mpr_date.strftime('%d %b %Y')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        
-        
-        
-        
-        
-    # =========================================================
-    # PHASE 2 - HDFC ESCROW FINAL WORKBOOK
-    # =========================================================
-    #
-    # This runs ONLY after the existing vendor + SQL process
-    # has completed successfully.
-    #
-    # Existing vendor logic is NOT changed.
-    # =========================================================
-        
-        
-        
+
+        # =========================================================
+        # PHASE 2 - HDFC ESCROW FINAL WORKBOOK
+        # =========================================================
+        #
+        # This runs ONLY after the existing vendor + SQL process
+        # has completed successfully.
+        #
+        # Existing vendor logic is NOT changed.
+        # =========================================================
+
         hdfc_final_xlsx = None
-        
+
         if (
-                
-                workbook_upload is not None
-                and mid_ids_upload is not None
-                and statement_upload is not None
+            workbook_upload is not None
+            and mid_ids_upload is not None
+            and statement_upload is not None
         ):
-            
-            
+
             try:
-                hdfc_final_xlsx = (
-                    build_hdfc_escrow_final_workbook(
-                        workbook_bytes=workbook_upload.getvalue(),
-                        mid_ids_bytes=mid_ids_upload.getvalue(),
-                        statement_bytes=statement_upload.getvalue(),
-                        sql_report_df=sql_report_df,
-                        )
-                    )
-                
+                hdfc_final_xlsx = build_hdfc_escrow_final_workbook(
+                    workbook_bytes=workbook_upload.getvalue(),
+                    mid_ids_bytes=mid_ids_upload.getvalue(),
+                    statement_bytes=statement_upload.getvalue(),
+                    sql_report_df=sql_report_df,
+                )
+
                 st.success(
                     "HDFC ESCROW workbook updated successfully ✅"
-                    )
-                
-                
-                
-                
-                
-                
+                )
+
                 st.download_button(
                     label="📥 Download Full Final Workbook",
                     data=hdfc_final_xlsx,
                     file_name=(
                         f"HDFC_ESCROW_Final_"
                         f"{mpr_date.strftime('%d %b %Y')}.xlsx"
-                        ),
-                    
+                    ),
                     mime=(
                         "application/vnd.openxmlformats-officedocument."
                         "spreadsheetml.sheet"
-                        ),
-                    
+                    ),
                     key="download_full_final_workbook",
-                    )
-                
+                )
+
             except Exception as e:
-                
+
                 st.error(
-                    f"HDFC ESCROW workbook creation failed: {e}")
-                
+                    f"HDFC ESCROW workbook creation failed: {e}"
+                )
+
         else:
-            
+
             st.info(
                 "Upload all 3 HDFC ESCROW files "
                 "(Workbook, MID IDs, Statement) "
                 "to generate the Full Final Workbook."
-                )
-            
-            
+            )
 
-                
-                
-                
+        # =========================================================
+        # EXISTING DOWNLOAD BUTTONS
+        # =========================================================
 
+        # 🔥 Button 1: Main Excel
+        st.download_button(
+            label="Download Main Excel",
+            data=main_xlsx,
+            file_name=f"Upload_Format- {mpr_date.strftime('%d %b %Y')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="download_main_excel",
+        )
 
+        # 🔥 Button 2: Summary Excel
+        st.download_button(
+            label="Download Summary Excel",
+            data=summary_xlsx,
+            file_name=f"Summary- {mpr_date.strftime('%d %b %Y')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            key="download_summary_excel",
+        )
 
-    # 🔥 Button 1: Main Excel
-    st.download_button(
-        label="Download Main Excel",
-        data=main_xlsx,
-        file_name=f"Upload_Format- {mpr_date.strftime('%d %b %Y')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_main_excel",
-    )
-
-    # 🔥 Button 2: Summary Excel
-    st.download_button(
-        label="Download Summary Excel",
-        data=summary_xlsx,
-        file_name=f"Summary- {mpr_date.strftime('%d %b %Y')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        key="download_summary_excel",
-
-    )
 elif zip_file:
     st.info("No vendor data was processed from the ZIP.")
