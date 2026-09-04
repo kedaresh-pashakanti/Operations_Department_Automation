@@ -110,14 +110,11 @@
 
 
 
-
-
-
-
 import ast
 import os
 import sys
 import traceback
+
 import streamlit as st
 
 
@@ -127,9 +124,12 @@ import streamlit as st
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 
 # ============================================================
-# APPLICATION FILES
+# CHILD APPLICATION FILES
 # ============================================================
 
 APP_FILE = os.path.join(
@@ -149,16 +149,7 @@ CROSSCHECK_FILE = os.path.join(
 
 
 # ============================================================
-# MAKE PROJECT DIRECTORY AVAILABLE FOR IMPORTS
-# ============================================================
-
-if BASE_DIR not in sys.path:
-    sys.path.insert(0, BASE_DIR)
-
-
-# ============================================================
-# MAIN STREAMLIT CONFIG
-# ONLY ONE set_page_config() IN THE ENTIRE APP
+# MAIN APP CONFIG
 # ============================================================
 
 st.set_page_config(
@@ -175,7 +166,7 @@ st.title("Ops Automation")
 
 
 # ============================================================
-# PROCESS SELECTOR
+# SELECT PROCESS
 # ============================================================
 
 option = st.selectbox(
@@ -189,32 +180,28 @@ option = st.selectbox(
 
 
 # ============================================================
-# REMOVE CHILD set_page_config()
+# AST TRANSFORMER
 # ============================================================
 
-class RemovePageConfigCalls(ast.NodeTransformer):
-    """
-    Removes calls such as:
+class RemoveStreamlitPageConfig(ast.NodeTransformer):
 
-        st.set_page_config(...)
+    def visit_Call(self, node):
+        """
+        Remove every form of:
 
-    from child Streamlit scripts.
+            st.set_page_config(...)
 
-    This is required because only the main app.py should
-    configure the Streamlit page.
-    """
+        from the child script.
+        """
 
-    def visit_Expr(self, node):
         self.generic_visit(node)
 
-        # Example:
         # st.set_page_config(...)
         if (
-            isinstance(node.value, ast.Call)
-            and isinstance(node.value.func, ast.Attribute)
-            and node.value.func.attr == "set_page_config"
-            and isinstance(node.value.func.value, ast.Name)
-            and node.value.func.value.id == "st"
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "set_page_config"
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "st"
         ):
             return None
 
@@ -222,31 +209,27 @@ class RemovePageConfigCalls(ast.NodeTransformer):
 
 
 # ============================================================
-# RUN CHILD STREAMLIT SCRIPT
+# RUN CHILD SCRIPT
 # ============================================================
 
 def run_child_script(file_path):
-    """
-    Execute an existing Streamlit script inside this main app.
-
-    The child script is executed after removing its own
-    st.set_page_config() calls so that Streamlit sees only
-    one page configuration.
-    """
 
     # --------------------------------------------------------
-    # Check file
+    # File existence
     # --------------------------------------------------------
 
-    if not os.path.isfile(file_path):
+    if not os.path.exists(file_path):
+
         st.error(
-            f"Application file not found:\n\n{file_path}"
+            f"File not found:\n{file_path}"
         )
+
         return
 
     try:
+
         # ----------------------------------------------------
-        # Read source
+        # Read child source
         # ----------------------------------------------------
 
         with open(
@@ -254,65 +237,72 @@ def run_child_script(file_path):
             "r",
             encoding="utf-8"
         ) as f:
-            source_code = f.read()
+
+            source = f.read()
+
 
         # ----------------------------------------------------
-        # Parse source
+        # Parse Python
         # ----------------------------------------------------
 
         tree = ast.parse(
-            source_code,
+            source,
             filename=file_path
         )
 
+
         # ----------------------------------------------------
-        # Remove child set_page_config()
+        # Remove ALL st.set_page_config() calls
         # ----------------------------------------------------
 
-        tree = RemovePageConfigCalls().visit(tree)
+        tree = RemoveStreamlitPageConfig().visit(tree)
 
         ast.fix_missing_locations(tree)
 
+
         # ----------------------------------------------------
-        # Create execution namespace
+        # Execution namespace
         # ----------------------------------------------------
 
-        namespace = {
+        child_globals = {
             "__name__": "__main__",
             "__file__": file_path,
             "__package__": None,
             "__cached__": None,
         }
 
+
         # ----------------------------------------------------
-        # Execute child application
+        # Execute child program
         # ----------------------------------------------------
 
-        compiled_code = compile(
+        compiled = compile(
             tree,
             file_path,
             "exec"
         )
 
         exec(
-            compiled_code,
-            namespace,
-            namespace
+            compiled,
+            child_globals,
+            child_globals
         )
 
-    except Exception:
-        # ----------------------------------------------------
-        # Show actual error inside Streamlit
-        # ----------------------------------------------------
+
+    except Exception as e:
 
         st.error(
-            f"Error while running:\n\n{os.path.basename(file_path)}"
+            f"Error running {os.path.basename(file_path)}"
         )
 
-        st.code(
-            traceback.format_exc(),
-            language="text"
-        )
+        st.exception(e)
+
+        with st.expander("Technical traceback"):
+
+            st.code(
+                traceback.format_exc(),
+                language="text"
+            )
 
 
 # ============================================================
@@ -332,7 +322,6 @@ elif option == "HDFC ESCROW MID MAPPING":
 elif option == "SP Cross Check":
 
     run_child_script(CROSSCHECK_FILE)
-
 
 
 
