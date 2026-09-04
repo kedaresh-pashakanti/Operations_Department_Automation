@@ -52,23 +52,132 @@
 
 
 
-import streamlit as st
-import runpy
+# import streamlit as st
+# import runpy
+# import os
+
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# APP_FILE = os.path.join(BASE_DIR, "1.py")
+# HDFC_FILE = os.path.join(BASE_DIR, "New_HDFC.py")
+# CROSSCHECK_FILE = os.path.join(BASE_DIR, "kotak_added_in_mid.py")
+
+# #CROSSCHECK_FILE = os.path.join(BASE_DIR, "kotak_added_in_mid_added_workbook.py")
+
+# # Main app config
+# st.set_page_config(page_title="Ops Automation", layout="wide")
+# st.title("Ops Automation")
+
+# # Simple selector only (no extra UI)
+# option = st.selectbox(
+#     "Select your process",
+#     [
+#         "Statement Processor",
+#         "HDFC ESCROW MID MAPPING",
+#         "SP Cross Check"
+#     ]
+# )
+
+# def run_child_script(file_path):
+#     """
+#     Runs a child Streamlit script safely.
+#     Temporarily disables st.set_page_config inside the child file
+#     so duplicate page_config errors do not happen.
+#     """
+#     original_set_page_config = st.set_page_config
+
+#     try:
+#         # Prevent child file from calling set_page_config again
+#         st.set_page_config = lambda *args, **kwargs: None
+#         runpy.run_path(file_path, run_name="__main__")
+#     finally:
+#         # Restore original function
+#         st.set_page_config = original_set_page_config
+
+# # Run original files directly
+# if option == "Statement Processor":
+#     run_child_script(APP_FILE)
+
+# elif option == "HDFC ESCROW MID MAPPING":
+#     run_child_script(HDFC_FILE)
+
+# elif option == "SP Cross Check":
+#     run_child_script(CROSSCHECK_FILE)
+
+
+
+
+
+
+
+
+
+
+
+import ast
 import os
+import sys
+import traceback
+import streamlit as st
+
+
+# ============================================================
+# BASE DIRECTORY
+# ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-APP_FILE = os.path.join(BASE_DIR, "1.py")
-HDFC_FILE = os.path.join(BASE_DIR, "New_HDFC.py")
-CROSSCHECK_FILE = os.path.join(BASE_DIR, "kotak_added_in_mid.py")
 
-#CROSSCHECK_FILE = os.path.join(BASE_DIR, "kotak_added_in_mid_added_workbook.py")
+# ============================================================
+# APPLICATION FILES
+# ============================================================
 
-# Main app config
-st.set_page_config(page_title="Ops Automation", layout="wide")
+APP_FILE = os.path.join(
+    BASE_DIR,
+    "1.py"
+)
+
+HDFC_FILE = os.path.join(
+    BASE_DIR,
+    "New_HDFC.py"
+)
+
+CROSSCHECK_FILE = os.path.join(
+    BASE_DIR,
+    "kotak_added_in_mid_added_workbook.py"
+)
+
+
+# ============================================================
+# MAKE PROJECT DIRECTORY AVAILABLE FOR IMPORTS
+# ============================================================
+
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+
+# ============================================================
+# MAIN STREAMLIT CONFIG
+# ONLY ONE set_page_config() IN THE ENTIRE APP
+# ============================================================
+
+st.set_page_config(
+    page_title="Ops Automation",
+    layout="wide"
+)
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
 st.title("Ops Automation")
 
-# Simple selector only (no extra UI)
+
+# ============================================================
+# PROCESS SELECTOR
+# ============================================================
+
 option = st.selectbox(
     "Select your process",
     [
@@ -78,34 +187,151 @@ option = st.selectbox(
     ]
 )
 
+
+# ============================================================
+# REMOVE CHILD set_page_config()
+# ============================================================
+
+class RemovePageConfigCalls(ast.NodeTransformer):
+    """
+    Removes calls such as:
+
+        st.set_page_config(...)
+
+    from child Streamlit scripts.
+
+    This is required because only the main app.py should
+    configure the Streamlit page.
+    """
+
+    def visit_Expr(self, node):
+        self.generic_visit(node)
+
+        # Example:
+        # st.set_page_config(...)
+        if (
+            isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == "set_page_config"
+            and isinstance(node.value.func.value, ast.Name)
+            and node.value.func.value.id == "st"
+        ):
+            return None
+
+        return node
+
+
+# ============================================================
+# RUN CHILD STREAMLIT SCRIPT
+# ============================================================
+
 def run_child_script(file_path):
     """
-    Runs a child Streamlit script safely.
-    Temporarily disables st.set_page_config inside the child file
-    so duplicate page_config errors do not happen.
+    Execute an existing Streamlit script inside this main app.
+
+    The child script is executed after removing its own
+    st.set_page_config() calls so that Streamlit sees only
+    one page configuration.
     """
-    original_set_page_config = st.set_page_config
+
+    # --------------------------------------------------------
+    # Check file
+    # --------------------------------------------------------
+
+    if not os.path.isfile(file_path):
+        st.error(
+            f"Application file not found:\n\n{file_path}"
+        )
+        return
 
     try:
-        # Prevent child file from calling set_page_config again
-        st.set_page_config = lambda *args, **kwargs: None
-        runpy.run_path(file_path, run_name="__main__")
-    finally:
-        # Restore original function
-        st.set_page_config = original_set_page_config
+        # ----------------------------------------------------
+        # Read source
+        # ----------------------------------------------------
 
-# Run original files directly
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8"
+        ) as f:
+            source_code = f.read()
+
+        # ----------------------------------------------------
+        # Parse source
+        # ----------------------------------------------------
+
+        tree = ast.parse(
+            source_code,
+            filename=file_path
+        )
+
+        # ----------------------------------------------------
+        # Remove child set_page_config()
+        # ----------------------------------------------------
+
+        tree = RemovePageConfigCalls().visit(tree)
+
+        ast.fix_missing_locations(tree)
+
+        # ----------------------------------------------------
+        # Create execution namespace
+        # ----------------------------------------------------
+
+        namespace = {
+            "__name__": "__main__",
+            "__file__": file_path,
+            "__package__": None,
+            "__cached__": None,
+        }
+
+        # ----------------------------------------------------
+        # Execute child application
+        # ----------------------------------------------------
+
+        compiled_code = compile(
+            tree,
+            file_path,
+            "exec"
+        )
+
+        exec(
+            compiled_code,
+            namespace,
+            namespace
+        )
+
+    except Exception:
+        # ----------------------------------------------------
+        # Show actual error inside Streamlit
+        # ----------------------------------------------------
+
+        st.error(
+            f"Error while running:\n\n{os.path.basename(file_path)}"
+        )
+
+        st.code(
+            traceback.format_exc(),
+            language="text"
+        )
+
+
+# ============================================================
+# PROCESS ROUTING
+# ============================================================
+
 if option == "Statement Processor":
+
     run_child_script(APP_FILE)
 
+
 elif option == "HDFC ESCROW MID MAPPING":
+
     run_child_script(HDFC_FILE)
 
+
 elif option == "SP Cross Check":
+
     run_child_script(CROSSCHECK_FILE)
-
-
-
 
 
 
