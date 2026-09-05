@@ -110,6 +110,233 @@
 
 
 
+# import ast
+# import os
+# import sys
+# import traceback
+
+# import streamlit as st
+
+
+# # ============================================================
+# # BASE DIRECTORY
+# # ============================================================
+
+# BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# if BASE_DIR not in sys.path:
+#     sys.path.insert(0, BASE_DIR)
+
+
+# # ============================================================
+# # CHILD APPLICATION FILES
+# # ============================================================
+
+# APP_FILE = os.path.join(
+#     BASE_DIR,
+#     "1.py"
+# )
+
+# HDFC_FILE = os.path.join(
+#     BASE_DIR,
+#     "New_HDFC.py"
+# )
+
+# CROSSCHECK_FILE = os.path.join(
+#     BASE_DIR,
+#     "kotak_added_in_mid_added_workbook.py"
+# )
+
+
+# # ============================================================
+# # MAIN APP CONFIG
+# # ============================================================
+
+# st.set_page_config(
+#     page_title="Ops Automation",
+#     layout="wide"
+# )
+
+
+# # ============================================================
+# # HEADER
+# # ============================================================
+
+# st.title("Ops Automation")
+
+
+# # ============================================================
+# # SELECT PROCESS
+# # ============================================================
+
+# option = st.selectbox(
+#     "Select your process",
+#     [
+#         "Statement Processor",
+#         "HDFC ESCROW MID MAPPING",
+#         "SP Cross Check"
+#     ]
+# )
+
+
+# # ============================================================
+# # AST TRANSFORMER
+# # ============================================================
+
+# class RemoveStreamlitPageConfig(ast.NodeTransformer):
+
+#     def visit_Call(self, node):
+#         """
+#         Remove every form of:
+
+#             st.set_page_config(...)
+
+#         from the child script.
+#         """
+
+#         self.generic_visit(node)
+
+#         # st.set_page_config(...)
+#         if (
+#             isinstance(node.func, ast.Attribute)
+#             and node.func.attr == "set_page_config"
+#             and isinstance(node.func.value, ast.Name)
+#             and node.func.value.id == "st"
+#         ):
+#             return None
+
+#         return node
+
+
+# # ============================================================
+# # RUN CHILD SCRIPT
+# # ============================================================
+
+# def run_child_script(file_path):
+
+#     # --------------------------------------------------------
+#     # File existence
+#     # --------------------------------------------------------
+
+#     if not os.path.exists(file_path):
+
+#         st.error(
+#             f"File not found:\n{file_path}"
+#         )
+
+#         return
+
+#     try:
+
+#         # ----------------------------------------------------
+#         # Read child source
+#         # ----------------------------------------------------
+
+#         with open(
+#             file_path,
+#             "r",
+#             encoding="utf-8"
+#         ) as f:
+
+#             source = f.read()
+
+
+#         # ----------------------------------------------------
+#         # Parse Python
+#         # ----------------------------------------------------
+
+#         tree = ast.parse(
+#             source,
+#             filename=file_path
+#         )
+
+
+#         # ----------------------------------------------------
+#         # Remove ALL st.set_page_config() calls
+#         # ----------------------------------------------------
+
+#         tree = RemoveStreamlitPageConfig().visit(tree)
+
+#         ast.fix_missing_locations(tree)
+
+
+#         # ----------------------------------------------------
+#         # Execution namespace
+#         # ----------------------------------------------------
+
+#         child_globals = {
+#             "__name__": "__main__",
+#             "__file__": file_path,
+#             "__package__": None,
+#             "__cached__": None,
+#         }
+
+
+#         # ----------------------------------------------------
+#         # Execute child program
+#         # ----------------------------------------------------
+
+#         compiled = compile(
+#             tree,
+#             file_path,
+#             "exec"
+#         )
+
+#         exec(
+#             compiled,
+#             child_globals,
+#             child_globals
+#         )
+
+
+#     except Exception as e:
+
+#         st.error(
+#             f"Error running {os.path.basename(file_path)}"
+#         )
+
+#         st.exception(e)
+
+#         with st.expander("Technical traceback"):
+
+#             st.code(
+#                 traceback.format_exc(),
+#                 language="text"
+#             )
+
+
+# # ============================================================
+# # PROCESS ROUTING
+# # ============================================================
+
+# if option == "Statement Processor":
+
+#     run_child_script(APP_FILE)
+
+
+# elif option == "HDFC ESCROW MID MAPPING":
+
+#     run_child_script(HDFC_FILE)
+
+
+# elif option == "SP Cross Check":
+
+#     run_child_script(CROSSCHECK_FILE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import ast
 import os
 import sys
@@ -322,11 +549,5 @@ elif option == "HDFC ESCROW MID MAPPING":
 elif option == "SP Cross Check":
 
     run_child_script(CROSSCHECK_FILE)
-
-
-
-
-
-
 
 
