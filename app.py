@@ -172,7 +172,7 @@ from kotak_added_in_mid import sp_crosscheck_app
 #       ↓
 #       statement_processor.py
 #
-from statement_processor import statement_processor_app
+#from statement_processor import statement_processor_app
 
 
 # ============================================================
