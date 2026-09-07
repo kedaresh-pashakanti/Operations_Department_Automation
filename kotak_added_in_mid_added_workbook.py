@@ -8,21 +8,483 @@ import re
 import zipfile
 from io import BytesIO
 from datetime import date
-
-
-
-
-
-
+from decimal import Decimal, InvalidOperation
+from collections import defaultdict
 
 import openpyxl
 
-# Reuse existing HDFC ESCROW logic.
-# This imports only functions; it does not start New_HDFC.py UI.
-from New_HDFC import (
-    ensure_standard_logic_columns,
-    apply_tag_logic,
-)
+# # Reuse existing HDFC ESCROW logic.
+# # This imports only functions; it does not start New_HDFC.py UI.
+# from New_HDFC import (
+#     ensure_standard_logic_columns,
+#     apply_tag_logic,
+# )
+
+
+
+# =========================================================
+# HDFC ESCROW LOGIC
+# =========================================================
+
+
+
+
+
+
+
+
+
+# =========================================================
+# HDFC ESCROW LOGIC - INLINE
+# =========================================================
+
+# ---------------------------------------------------------------------
+# Core MPR Credit From SP rules
+# ---------------------------------------------------------------------
+MPR_RULES = [
+    (["CR-IDIB000F523-ONEPAY MOBILEWARE PRIVATE LIMITED"], "1-INDIANBANKUPI"),
+    (["TERMINAL 1 CARDS SETTL."], "2-HDFC"),
+    (["RTGS CR-SBIN0004292-STATE BANK OF INDIA"], "3-SBI Acquiring"),
+    (["NEFT CR-SBIN0016209-STATE BANK OF INDIA", "SBIN0016209-INB RECON-1PAY MOBILEWARE PVT LTD",], "4-SBI NB"),
+    (["NEFT CR-ICIC0000018-NDPS", "NTT DATA PAYMENT SERVICES",], "5-Atom NB"),
+    (["SETTLEMENT ROU"], "6-HDFC NB"),
+    (["RTGS CR-UTIB0000100-1PAY MOBILEWARE PVT LTD ESCROW", "NEFT Cr-UTIB0000100-1PAY MOBILEWARE PVT LTD ESCROW",], "7-AXIS Bank NB"),
+    (["CR-YESB0000402-1PAY MOBILEWARE PVT LTD ESCROW"], "8-YES Bank NB"),
+    (["CENTRAL LIABILITY OPERATIONS CPC CL"], "9-ICICI NB"),
+    (["UPI SETTLEMENT"], "10-HDFCUPI"),
+    (["TO CHECK CREDIT NARRATION AND MAP"], "11-ECMS"),
+    (["NEFT CR-ICIC0000105-WORLDLINE EPAYMENTS INDIA PRIVATE LIMITED", "ICIC0099999-WORLDLINE EPAYMENTS", "RTGS Cr-ICIC0000105-WORLDLINE EPAYMENTS",], "12-WorldLine NB"),
+    (["ICIC0099999-ICICI BANK DISB ACC INHOUSE MER ACQ"], "13-ICICICards"),
+    (["TO CHECK CREDIT NARRATION AND MAP"], "14-PayzApp"),
+    (["1PAYM"], "15-1PayecmsHDFC"),
+    (["NO CREDIT IN HDFC ESCROW"], "16-1PayecmsIndianbank"),
+    (["NO CREDIT IN HDFC ESCROW"], "17-Airtelpay"),
+    ([
+        "NEFT CR-CITI0100000-INDIAIDEAS.COM LIMITED",
+        "CITI0100000-INDIAIDEAS.COM",
+    ], "18-Billdesk"),
+    (["NO CREDIT IN HDFC ESCROW"], "19-MobilewareUPI"),
+    ([
+        "KKBK0000958-NEFT POS ACQUIRING RECEIVABLES",
+        "UPI MERCHANT ACQUIRING RECEIVABL",
+    ], "20-KotakUPI"),
+    (["KKBK0000958-Juspay UPI Inward pool"], "25-KotakJusPay UPI"),
+]
+
+# ---------------------------------------------------------------------
+# Extra SP Identifier/MID mapping rules
+# ---------------------------------------------------------------------
+
+EXTRA_SP_MID_RULES = [
+    ("76034657", "M00028"),
+    ("76045442", "M00066"),
+    ("70036473", "M000125"),
+    ("70036474", "M000123"),
+    ("70036475", "M000124"),
+    ("76027802", "M00015"),
+    ("70044094", "M00006173"),
+    ("70039039", "M00005451")
+]
+
+
+# ---------------------------------------------------------------------
+# Utility helpers
+# ---------------------------------------------------------------------
+def normalize_text(value):
+    """Uppercase, trim, and collapse whitespace for safe substring checks."""
+    if value is None:
+        return ""
+
+    text = str(value).replace("\u00A0", " ")
+    text = re.sub(r"\s+", " ", text).strip().upper()
+
+    return text
+
+
+def parse_amount(value):
+    """
+    Convert different amount formats into Decimal for safe comparisons.
+    """
+    if value is None or value == "":
+        return None
+
+    text = str(value).strip()
+    text = text.replace(",", "")
+    text = text.replace("₹", "")
+    text = text.replace("INR", "")
+    text = text.replace(" ", "")
+
+    if text.startswith("(") and text.endswith(")"):
+        text = "-" + text[1:-1]
+
+    try:
+        return Decimal(text)
+
+    except (InvalidOperation, ValueError):
+        match = re.search(r"-?\d+(?:\.\d+)?", text)
+
+        if match:
+            try:
+                return Decimal(match.group(0))
+            except (InvalidOperation, ValueError):
+                return None
+
+    return None
+
+
+def safe_str(value):
+    return "" if value is None else str(value)
+
+
+def extract_m_identifier(description_text):
+    match = re.search(r"\bM\d+\b", description_text)
+    return match.group(0) if match else ""
+
+
+def row_tag_allowed(flag, rule_tag):
+    """
+    Enforce the requested gate:
+    - MPR only when C.D.Falg = C
+    - Chargeback / Payout / MDR / Refund only when C.D.Falg = D
+    - FD only when C.D.Falg = C
+    """
+
+    f = normalize_text(flag)
+
+    if rule_tag == "MPR":
+        return f == "C"
+
+    if rule_tag in {"CHARGEBACK", "PAYOUT", "MDR", "REFUND"}:
+        return f == "D"
+
+    if rule_tag == "FD":
+        return f == "C"
+
+    return False
+
+
+# ---------------------------------------------------------------------
+# Rule functions
+# ---------------------------------------------------------------------
+def get_mpr_credit_from_sp(description):
+    text = normalize_text(description)
+
+    for patterns, sp_id in MPR_RULES:
+        for pattern in patterns:
+            if pattern in text:
+                return "MPR Credit From SP", sp_id
+
+    return None, None
+
+
+def get_chargeback(description):
+    text = normalize_text(description)
+
+    if "76027802" in text:
+        return "Chargeback", "M00015"
+
+    if "CHARGEBACK" in text:
+        return "Chargeback", ""
+
+    return None, None
+
+
+def get_payout(description):
+    text = normalize_text(description)
+
+    if "FT-3017" in text:
+        return "Payout", "M000201"
+
+    if "FT-IOCL" in text:
+        return "Payout", "M00036"
+
+    if text.startswith("NEFT") or text.startswith("FT"):
+        return "Payout", extract_m_identifier(text)
+
+    return None, None
+
+
+def get_mdr(description):
+    text = normalize_text(description)
+
+    if text.startswith("FT") and (
+        "MDR-PG" in text
+        or "MDR-ERP" in text
+        or re.search(r"\bMDR\b", text)
+    ):
+        return "MDR", "MDR"
+
+    return None, None
+
+
+def get_fd_mapping(description):
+    text = normalize_text(description)
+
+    if (
+        "ESCROW TD REDEMPTION PRINCIPAL" in text
+        or "ESCROW TD REDEMPTION INTEREST" in text
+    ):
+        return "FD", "FD"
+
+    return None, None
+
+
+def get_refund(description, current_tag="", current_sp=""):
+    text = normalize_text(description)
+
+    current_tag = (current_tag or "").strip()
+    current_sp = (current_sp or "").strip()
+
+    if text.startswith("UPI-") or text.startswith("UPIREF"):
+        return "Refund", ""
+
+    if "CR.VOUCHER PROCESSED" in text:
+        return "Refund", ""
+
+    if re.search(r"\b(ORDER|ORDE)\s+REFUND\s*$", text):
+        return "Refund", ""
+
+    if "1CREDIT VOUCHER" in text:
+        return "Refund", ""
+
+    if "REF-1PAYM" in text:
+        return "Refund", ""
+
+    if text.startswith("CV prcsd-") or text.startswith("CV prcsd"):
+        return "Refund", ""
+
+    return None, None
+
+
+def get_sp_identifier_mid_mapping(description):
+    text = normalize_text(description)
+
+    for needle, sp_mid in EXTRA_SP_MID_RULES:
+        if needle in text:
+            return sp_mid
+
+    return None
+
+
+def mark_knock_off_rows(df):
+    """
+    Knock Off:
+      1) same Reference No twice
+      2) one C and one D
+      3) same amount
+
+    Overrides existing tags, because Knock Off should win.
+    """
+
+    needed = {"Reference No", "C.D.Falg", "Amount"}
+
+    if not needed.issubset(df.columns):
+        return df
+
+    groups = defaultdict(list)
+
+    for idx, ref in df["Reference No"].items():
+        ref_key = safe_str(ref).strip()
+
+        if ref_key:
+            groups[ref_key].append(idx)
+
+    for _, row_indices in groups.items():
+
+        if len(row_indices) != 2:
+            continue
+
+        i1, i2 = row_indices
+
+        c1 = normalize_text(df.at[i1, "C.D.Falg"])
+        c2 = normalize_text(df.at[i2, "C.D.Falg"])
+
+        if {c1, c2} != {"C", "D"}:
+            continue
+
+        amt1 = parse_amount(df.at[i1, "Amount"])
+        amt2 = parse_amount(df.at[i2, "Amount"])
+
+        if amt1 is None or amt2 is None or amt1 != amt2:
+            continue
+
+        for i in (i1, i2):
+            df.at[i, "Tranaction Tag"] = "Knock Off"
+            df.at[i, "SP Identifier/MID"] = "Knock Off"
+
+    return df
+
+
+# ---------------------------------------------------------------------
+# Standard HDFC columns
+# ---------------------------------------------------------------------
+def ensure_standard_logic_columns(df):
+    """
+    Create standard columns if the source file uses slightly different names
+    or if the relevant columns are only present by position.
+    """
+
+    out = df.copy()
+    raw_cols = list(out.columns)
+
+    if "Transaction Date" not in out.columns and len(raw_cols) >= 1:
+        out["Transaction Date"] = out.iloc[:, 0]
+
+    if "Description" not in out.columns and len(raw_cols) >= 2:
+        out["Description"] = out.iloc[:, 1]
+
+    if "Amount" not in out.columns and len(raw_cols) >= 3:
+        out["Amount"] = out.iloc[:, 2]
+
+    if "C.D.Falg" not in out.columns and len(raw_cols) >= 4:
+        out["C.D.Falg"] = out.iloc[:, 3]
+
+    if "Reference No" not in out.columns and len(raw_cols) >= 5:
+        out["Reference No"] = out.iloc[:, 4]
+
+    if "Value Date" not in out.columns and len(raw_cols) >= 6:
+        out["Value Date"] = out.iloc[:, 5]
+
+    if "Branch Name" not in out.columns and len(raw_cols) >= 7:
+        out["Branch Name"] = out.iloc[:, 6]
+
+    if "Running Balance" not in out.columns and len(raw_cols) >= 8:
+        out["Running Balance"] = out.iloc[:, 7]
+
+    return out
+
+
+# ---------------------------------------------------------------------
+# Main HDFC tag engine
+# ---------------------------------------------------------------------
+def apply_tag_logic(df, refund_rrn_map=None, special_refund_sp_map=None):
+    """
+    Order:
+        MPR (C only)
+        -> Chargeback (D only)
+        -> MDR (D only)
+        -> Payout (D only)
+        -> Refund (D only)
+
+        Knock Off overrides existing tags.
+
+        Extra SP mapping fills blank SP only.
+    """
+
+    if "Tranaction Tag" not in df.columns:
+        df["Tranaction Tag"] = ""
+
+    if "SP Identifier/MID" not in df.columns:
+        df["SP Identifier/MID"] = ""
+
+    if "Split Refunds" not in df.columns:
+        df["Split Refunds"] = ""
+
+    for idx in df.index:
+
+        description = (
+            df.at[idx, "Description"]
+            if "Description" in df.columns
+            else ""
+        )
+
+        flag = (
+            df.at[idx, "C.D.Falg"]
+            if "C.D.Falg" in df.columns
+            else ""
+        )
+
+        tag = None
+        sp = None
+
+        # 1st
+        if row_tag_allowed(flag, "MPR"):
+
+            tag, sp = get_mpr_credit_from_sp(description)
+
+            if tag is None:
+                tag, sp = get_fd_mapping(description)
+
+        # 2nd
+        if tag is None and row_tag_allowed(flag, "CHARGEBACK"):
+            tag, sp = get_chargeback(description)
+
+        # 3rd
+        if tag is None and row_tag_allowed(flag, "MDR"):
+            tag, sp = get_mdr(description)
+
+        # 4th
+        if tag is None and row_tag_allowed(flag, "PAYOUT"):
+            tag, sp = get_payout(description)
+
+        # End
+        if tag is None and row_tag_allowed(flag, "REFUND"):
+            tag, sp = get_refund(
+                description,
+                current_tag=""
+            )
+
+        if tag is not None:
+            df.at[idx, "Tranaction Tag"] = tag
+            df.at[idx, "SP Identifier/MID"] = (
+                sp if sp is not None else ""
+            )
+
+    # ---------------------------------------------------------
+    # Additional Refund override
+    # ---------------------------------------------------------
+    for idx in df.index:
+
+        description = df.at[idx, "Description"]
+        text = normalize_text(description)
+
+        if (
+            "1CREDIT VOUCHER" in text
+            or "REF-1PAYM" in text
+            or text.startswith("CV PRCSD-")
+            or text.startswith("CV PRCSD")
+            or text.startswith("CR.VOUCHER PROCESSED")
+        ):
+            df.at[idx, "Tranaction Tag"] = "Refund"
+            df.at[idx, "SP Identifier/MID"] = ""
+
+        elif "1CREDIT VOUCHER" in text:
+            df.at[idx, "Tranaction Tag"] = "Refund"
+
+    # ---------------------------------------------------------
+    # Knock Off
+    # ---------------------------------------------------------
+    df = mark_knock_off_rows(df)
+
+    # ---------------------------------------------------------
+    # Extra SP Identifier/MID mapping
+    # ---------------------------------------------------------
+    if "Description" in df.columns:
+
+        for idx in df.index:
+
+            description = df.at[idx, "Description"]
+
+            mapped_sp = get_sp_identifier_mid_mapping(
+                description
+            )
+
+            if mapped_sp:
+
+                current_sp = safe_str(
+                    df.at[idx, "SP Identifier/MID"]
+                ).strip()
+
+                if not current_sp:
+                    df.at[idx, "SP Identifier/MID"] = mapped_sp
+
+    return df
+
+
+
+
+
+
 
 
 
